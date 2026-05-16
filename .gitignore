@@ -1,0 +1,24 @@
+# Ignore build and data artifacts
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+*.class
+*.jar
+*.pyc
+*.ipynb_checkpoints/
+
+# SBT/Scala
+spark-heavy-hitters/target/
+spark-heavy-hitters/project/target/
+spark-heavy-hitters/project/project/
+
+# Python
+__pycache__/
+
+# Data and results
+clean/
+data/
+results/

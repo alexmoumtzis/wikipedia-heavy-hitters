@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run CmsHeavyHitters Once",
+			"type": "shell",
+			"command": "sbt",
+			"args": [
+				"-batch",
+				"\"runMain CmsHeavyHitters\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run CmsHeavyHitters Once",
+			"type": "shell",
+			"command": "sbt -batch \"runMain CmsHeavyHitters\"",
+			"isBackground": false
+		}
+	]
+}
