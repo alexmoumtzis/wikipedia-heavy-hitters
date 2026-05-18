@@ -1,0 +1,68 @@
+package ams_sketch
+
+/**
+ * Shared hash utilities for AMS sketching.
+ * Provides MurmurHash-based functions for deterministic, uniform hashing.
+ */
+object HashUtils {
+
+  /**
+   * MurmurHash64 for Long values.
+   * Fast 64-bit hash with good avalanche properties.
+   *
+   * @param k    Input value to hash
+   * @param seed Seed for hash family selection
+   * @return 64-bit hash value
+   */
+  def murmurHash64(k: Long, seed: Long): Long = {
+    val m = 0xc6a4a7935bd1e995L
+    val r = 47
+
+    var h = seed ^ (8L * m)
+    var x = k
+
+    x *= m
+    x ^= x >>> r
+    x *= m
+    h ^= x
+    h *= m
+
+    h ^= h >>> r
+    h *= m
+    h ^= h >>> r
+
+    h
+  }
+
+  /**
+   * Hash a String to a stable Long index.
+   * Processes UTF-8 bytes with MurmurHash-style mixing.
+   *
+   * Used to map item identifiers (page titles) to integer indices
+   * for coefficient lookup. Guarantees same string always maps to
+   * same index across JVM instances.
+   *
+   * @param value String to hash
+   * @return Deterministic 64-bit hash
+   */
+  def hashString(value: String): Long = {
+    val bytes = value.getBytes("UTF-8")
+    var h = 0xcafebabe00000000L
+
+    var i = 0
+    while (i < bytes.length) {
+      h ^= (bytes(i).toLong & 0xffL) << ((i % 8) * 8)
+      h = java.lang.Long.rotateLeft(h, 31)
+      h *= 0x9e3779b97f4a7c15L
+      i += 1
+    }
+
+    // Final mixing (Murmur-style finalizer)
+    h ^= h >>> 33
+    h *= 0xff51afd7ed558ccdL
+    h ^= h >>> 33
+    h *= 0xc4ceb9fe1a85ec53L
+    h ^= h >>> 33
+    h
+  }
+}

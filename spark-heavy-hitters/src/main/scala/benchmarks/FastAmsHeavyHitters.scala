@@ -1,4 +1,5 @@
-package count_min
+package ams_sketch
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{sum => sqlSum}
 
@@ -9,85 +10,72 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold-based heavy hitters via Count-Min Sketch (Cormode & Muthukrishnan,
- * "Sketches" textbook, sec. 5.3.4.1 — cash-register model).
+ * Threshold-based heavy hitters via Fast AMS / Count Sketch
+ * (Charikar, Chen, Farach-Colton 2002).
  *
- * Heavy hitter definition:
- *   An item x is a heavy hitter iff its true frequency f(x) > phi * N,
- *   where N is the total weight (sum of views) and 0 < phi < 1.
+ * Heavy hitter definition (same as CMS variant):
+ *   An item x is a heavy hitter iff its true frequency f(x) > phi * N.
  *
  * Cash-register algorithm:
- *   - One global CMS, no partitioned merging, no top-k heap-with-cap heuristic.
- *   - For every arriving record (key, views):
- *       1. cms.update(key, views)
- *       2. est = cms.estimate(key)
- *       3. if est >= phi * runningN, mark key as a candidate heavy hitter
- *   - After the stream, requery the final merged sketch and keep only those
- *     candidates whose final estimate is still >= phi * finalN. CMS only
- *     over-estimates, so this yields no false negatives among items truly
- *     above the threshold (probability >= 1 - delta).
+ *   - One global FastAMSSketch (numTables hash tables of tableSize signed counters).
+ *   - For every (key, views): sketch.update(key, views); query est;
+ *     if est >= phi * runningN, mark key as a candidate.
+ *   - After the stream, requery the final sketch and keep only candidates whose
+ *     final estimate is still >= phi * finalN.
  *
- * Threshold (phi) estimation for this dataset:
- *   The book notes: "there are at most 1/phi possible true heavy hitters".
- *   The Wikimedia pageview dataset cleaned in this project has on the order of
- *   N ~ 1e8 .. 1e9 total weighted views across millions of distinct keys, with
- *   a strongly skewed (Zipf-like) distribution where the top page typically
- *   carries ~ 0.1 .. 1 % of total traffic.
- *
- *   Reasonable choices:
- *     phi = 1e-3  -> threshold = 0.1 % of N, up to ~1,000 heavy hitters
- *     phi = 1e-4  -> threshold = 0.01% of N, up to ~10,000 heavy hitters
- *     phi = 1e-5  -> threshold = 0.001% of N, up to ~100,000 (too permissive)
- *
- *   We default to phi = 1e-4: small enough to surface the long tail of popular
- *   pages while keeping the candidate set manageable. It should also pair well
- *   with the CMS epsilon (epsilon << phi is required so that the additive
- *   error epsilon * N does not dominate the threshold phi * N).
- *   At phi = 1e-4 and epsilon = 1e-6, error bound is 1% of threshold => safe.
+ * The Count Sketch per-item estimator is f̂(x) = median_t [ ξ(x,t) · counter[t][bucket(x,t)] ].
+ * Unlike CMS this is unbiased (mean = f(x)) but can be negative on noise; this means
+ * we may have BOTH false positives and false negatives, in contrast to CMS which only
+ * over-estimates and therefore has only false positives.
  */
-object CmsHeavyHitters {
+object FastAmsHeavyHitters {
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder()
-      .appName("CmsHeavyHitters")
+      .appName("FastAmsHeavyHitters")
       .master("local[*]")
+      // Cap input partition size at read time so toLocalIterator() task result
+      // blocks fit in the driver heap, while preserving parquet scan order.
+      .config("spark.sql.files.maxPartitionBytes", 16L * 1024 * 1024) // 16 MiB
+      .config("spark.sql.files.openCostInBytes", 4L * 1024 * 1024)
+      .config("spark.driver.maxResultSize", "4g")
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
     // -----------------------------------------------------------------------
-    // Parameters (override via positional args)
+    // Parameters
     //   args(0): inputPath
     //   args(1): outputPath
-    //   args(2): epsilon  (CMS additive error fraction of N)
-    //   args(3): delta    (CMS failure probability)
-    //   args(4): phi      (heavy-hitter threshold fraction of N)
+    //   args(2): epsilonSquared  (controls tableSize = ceil(16/ε²))
+    //   args(3): delta           (controls numTables = ceil(2·ln(1/δ)))
+    //   args(4): phi             (heavy-hitter threshold fraction of N)
     //   args(5): baselinePath
     // -----------------------------------------------------------------------
-    val defaultInputPath     = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
-    val defaultOutputPath    = "file:///C:/Users/alexm/wiki-heavy-hitters/results/cms_topk"
-    val defaultBaselinePath  = "C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
+    val defaultInputPath    = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
+    val defaultOutputPath   = "file:///C:/Users/alexm/wiki-heavy-hitters/results/fast_ams_topk"
+    val defaultBaselinePath = "C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
 
-    val inputPath    = if (args.length > 0) args(0) else defaultInputPath
-    val outputPath   = if (args.length > 1) args(1) else defaultOutputPath
-    // epsilon must be << phi so that the CMS additive error (epsilon * N) is
-    // small compared to the heavy-hitter threshold (phi * N).
-    val epsilon      = if (args.length > 2) args(2).toDouble else 1e-6
-    val delta        = if (args.length > 3) args(3).toDouble else 1e-3
-    val phi          = if (args.length > 4) args(4).toDouble else 1e-4
-    val baselinePath = if (args.length > 5) args(5) else defaultBaselinePath
+    val inputPath      = if (args.length > 0) args(0) else defaultInputPath
+    val outputPath     = if (args.length > 1) args(1) else defaultOutputPath
+    // tableSize = ceil(16/epsilonSquared). epsilonSquared = 1.6e-4 -> 100000 buckets.
+    val epsilonSquared = if (args.length > 2) args(2).toDouble else 1.6e-4
+    val delta          = if (args.length > 3) args(3).toDouble else 1e-3
+    val phi            = if (args.length > 4) args(4).toDouble else 1e-4
+    val baselinePath   = if (args.length > 5) args(5) else defaultBaselinePath
 
     require(phi > 0.0 && phi < 1.0, "phi must be in (0, 1)")
-    require(epsilon < phi, s"epsilon ($epsilon) must be < phi ($phi); otherwise " +
-                           "CMS error swamps the heavy-hitter threshold")
 
     // -----------------------------------------------------------------------
-    // CMS initialisation
+    // FastAMS initialisation
     // -----------------------------------------------------------------------
-    val cms = CountMinSketch.fromEpsilonDelta(epsilon, delta)
-    val memoryKB = cms.counterCount * 8L / 1024.0
+    val sketch    = FastAMSSketch(epsilonSquared, delta)
+    val numTables = sketch.numTables
+    val tableSize = sketch.tableSize
+    // Memory is sparse; worst-case fully-populated upper bound for reporting.
+    val maxMemoryKB = numTables.toLong * tableSize.toLong * 8L / 1024.0
     println("=" * 70)
-    println(f"[CMS] epsilon=$epsilon%.1e  delta=$delta%.1e  phi=$phi%.1e  " +
-            f"width=${cms.width}  depth=${cms.depth}  memory=$memoryKB%.1f KB")
+    println(f"[FAST_AMS] eps^2=$epsilonSquared%.1e  delta=$delta%.1e  phi=$phi%.1e  " +
+            f"numTables=$numTables  tableSize=$tableSize  maxMem=$maxMemoryKB%.1f KB")
     println("=" * 70)
 
     // -----------------------------------------------------------------------
@@ -108,13 +96,11 @@ object CmsHeavyHitters {
     }
     require(parquetFiles.nonEmpty, s"No .parquet files found under: $inputPath")
 
+    // No repartition / shuffle: preserve parquet scan order.
     val df = spark.read.parquet(parquetFiles: _*).select("key", "views")
 
     // -----------------------------------------------------------------------
-    // Sequential cash-register stream:
-    //   For each row, update CMS, then test est >= phi * runningN.
-    //   We pull rows to the driver one-at-a-time via toLocalIterator to avoid
-    //   loading the whole dataset into driver memory.
+    // Sequential cash-register stream
     // -----------------------------------------------------------------------
     val candidateHHs = mutable.HashSet.empty[String]
     var rowsSeen = 0L
@@ -127,11 +113,10 @@ object CmsHeavyHitters {
         val key   = row.getString(0)
         val views = row.getLong(1)
 
-        cms.update(key, views)
-        val est = cms.estimate(key)
+        sketch.update(key, views)
+        val est = sketch.estimateFrequency(key)
 
-        // Dynamic threshold uses the running N, for the cash-register model.
-        val runningThreshold = phi * cms.totalWeight
+        val runningThreshold = phi * sketch.totalWeightSeen
         if (est.toDouble >= runningThreshold) candidateHHs += key
 
         rowsSeen += 1
@@ -142,28 +127,25 @@ object CmsHeavyHitters {
     val runtimeSec = (streamEnd - streamStart) / 1000.0
     val throughput = if (runtimeSec > 0) rowsSeen / runtimeSec else 0.0
 
-    println(s"\n[CMS] stream done. rows=$rowsSeen  N=${cms.totalWeight}  " +
+    println(s"\n[FAST_AMS] stream done. rows=$rowsSeen  N=${sketch.totalWeightSeen}  " +
             s"time=${runtimeSec}s  candidate_pool=${candidateHHs.size}")
 
     // -----------------------------------------------------------------------
-    // Final pruning: requery final CMS and drop candidates whose estimate is
-    // no longer >= phi * finalN (threshold grew as N grew during the stream).
+    // Final pruning
     // -----------------------------------------------------------------------
-    val finalThreshold: Long = math.ceil(phi * cms.totalWeight).toLong
+    val finalThreshold: Long = math.ceil(phi * sketch.totalWeightSeen).toLong
     val heavyHitters: Seq[(String, Long)] = candidateHHs.iterator
-      .map(key => (key, cms.estimate(key)))
+      .map(key => (key, sketch.estimateFrequency(key)))
       .filter { case (_, est) => est >= finalThreshold }
       .toSeq
       .sortBy { case (_, est) => -est }
 
-    val cmsHHKeys: Set[String] = heavyHitters.map(_._1).toSet
-    println(s"[CMS] final heavy hitters: ${cmsHHKeys.size}  " +
+    val sketchHHKeys: Set[String] = heavyHitters.map(_._1).toSet
+    println(s"[FAST_AMS] final heavy hitters: ${sketchHHKeys.size}  " +
             s"(threshold = phi * N = $finalThreshold)")
 
     // -----------------------------------------------------------------------
-    // Load exact baseline (sorted desc by total_views) and identify the true
-    // heavy-hitter set: keys with total_views > phi * N_exact. The baseline
-    // is globally sorted, so we can stop as soon as we drop below threshold.
+    // Load exact baseline
     // -----------------------------------------------------------------------
     val baselineDir =
       if (baselinePath.startsWith("file:///")) Paths.get(new URI(baselinePath))
@@ -180,8 +162,6 @@ object CmsHeavyHitters {
       } finally stream.close()
     }
 
-    // True N can differ slightly from cms.totalWeight only if some rows were
-    // skipped due to nulls; use the exact baseline's own N for fairness.
     val trueN: Long = spark.read.parquet(parquetFiles: _*)
       .agg(sqlSum("views"))
       .first().getLong(0)
@@ -201,7 +181,7 @@ object CmsHeavyHitters {
             val key = line.substring(0, idx)
             val tv  = line.substring(idx + 1).toLong
             if (tv >= trueThreshold) trueHHBuf(key) = tv
-            else done = true   // baseline is sorted desc; nothing more qualifies
+            else done = true
           }
         }
         if (!done) line = reader.readLine()
@@ -215,24 +195,24 @@ object CmsHeavyHitters {
             s"(threshold = phi * N_exact = $trueThreshold,  N_exact = $trueN)")
 
     // -----------------------------------------------------------------------
-    // Benchmarks (set-based — k is now derived, not chosen)
+    // Benchmarks
     // -----------------------------------------------------------------------
-    val truePositives  = cmsHHKeys.intersect(trueHHKeys).size
-    val falsePositives = cmsHHKeys.diff(trueHHKeys).size
-    val falseNegatives = trueHHKeys.diff(cmsHHKeys).size
-    val precision = if (cmsHHKeys.nonEmpty)  truePositives.toDouble / cmsHHKeys.size  else 0.0
-    val recall    = if (trueHHKeys.nonEmpty) truePositives.toDouble / trueHHKeys.size else 0.0
+    val truePositives  = sketchHHKeys.intersect(trueHHKeys).size
+    val falsePositives = sketchHHKeys.diff(trueHHKeys).size
+    val falseNegatives = trueHHKeys.diff(sketchHHKeys).size
+    val precision = if (sketchHHKeys.nonEmpty)  truePositives.toDouble / sketchHHKeys.size  else 0.0
+    val recall    = if (trueHHKeys.nonEmpty)    truePositives.toDouble / trueHHKeys.size    else 0.0
 
-    val matched = cmsHHKeys.intersect(trueHHKeys).toSeq
+    val matched = sketchHHKeys.intersect(trueHHKeys).toSeq
     val (freqErrors, relErrors) = if (matched.isEmpty) {
       (Seq.empty[Double], Seq.empty[Double])
     } else {
       val fe = matched.map { key =>
-        math.abs(cms.estimate(key).toDouble - trueViews(key).toDouble)
+        math.abs(sketch.estimateFrequency(key).toDouble - trueViews(key).toDouble)
       }
       val re = matched.map { key =>
         val real = trueViews(key).toDouble
-        if (real > 0) math.abs(cms.estimate(key).toDouble - real) / real else 0.0
+        if (real > 0) math.abs(sketch.estimateFrequency(key).toDouble - real) / real else 0.0
       }
       (fe, re)
     }
@@ -250,29 +230,29 @@ object CmsHeavyHitters {
     // -----------------------------------------------------------------------
     println()
     println("=" * 70)
-    println("  COUNT-MIN SKETCH  —  THRESHOLD HEAVY HITTERS BENCHMARK")
+    println("  FAST AMS / COUNT SKETCH  —  THRESHOLD HEAVY HITTERS BENCHMARK")
     println("=" * 70)
     println(f"  Parameters")
-    println(f"    epsilon              : $epsilon%.1e")
+    println(f"    epsilon^2            : $epsilonSquared%.1e")
     println(f"    delta                : $delta%.1e")
     println(f"    phi                  : $phi%.1e")
-    println(f"    width (w)            : ${cms.width}")
-    println(f"    depth (d)            : ${cms.depth}")
+    println(f"    numTables (t)        : $numTables")
+    println(f"    tableSize (b)        : $tableSize")
     println()
-    println(f"  Memory")
-    println(f"    CMS table size       : $memoryKB%.2f KB  (${cms.counterCount} counters x 8 bytes)")
+    println(f"  Memory (worst case, fully populated)")
+    println(f"    Sketch upper bound   : $maxMemoryKB%.2f KB  (${numTables.toLong * tableSize.toLong} counters x 8 bytes)")
     println()
     println(f"  Runtime & Throughput")
     println(f"    Total stream rows    : $rowsSeen")
-    println(f"    Total weighted N     : ${cms.totalWeight}")
+    println(f"    Total weighted N     : ${sketch.totalWeightSeen}")
     println(f"    Wall-clock time      : $runtimeSec%.2f s")
     println(f"    Throughput           : $throughput%.0f rows/s")
     println()
     println(f"  Heavy hitters")
-    println(f"    CMS threshold        : $finalThreshold")
+    println(f"    Sketch threshold     : $finalThreshold")
     println(f"    Exact threshold      : $trueThreshold")
-    println(f"    CMS  HH count        : ${cmsHHKeys.size}")
-    println(f"    True HH count        : ${trueHHKeys.size}")
+    println(f"    Sketch HH count      : ${sketchHHKeys.size}")
+    println(f"    True   HH count      : ${trueHHKeys.size}")
     println(f"    True positives       : $truePositives")
     println(f"    False positives      : $falsePositives")
     println(f"    False negatives      : $falseNegatives")
@@ -284,8 +264,8 @@ object CmsHeavyHitters {
     println(f"    Max  relative error  : ${maxRelErr * 100}%.2f%%")
     println("=" * 70)
 
-    println(s"\n[CMS] top-20 heavy hitters CMS vs exact:")
-    println(f"  ${"key"}%-55s  ${"CMS est"}%12s  ${"true"}%12s  ${"rel err"}%8s")
+    println(s"\n[FAST_AMS] top-20 heavy hitters Fast-AMS vs exact:")
+    println(f"  ${"key"}%-55s  ${"FAMS est"}%12s  ${"true"}%12s  ${"rel err"}%8s")
     println("  " + "-" * 93)
     heavyHitters.take(20).foreach { case (key, est) =>
       val real   = trueViews.getOrElse(key, -1L)
@@ -295,7 +275,7 @@ object CmsHeavyHitters {
     }
 
     // -----------------------------------------------------------------------
-    // Save CMS heavy-hitter output + benchmark report
+    // Save outputs
     // -----------------------------------------------------------------------
     import spark.implicits._
     heavyHitters.toDF("key", "estimated_views")
@@ -304,35 +284,35 @@ object CmsHeavyHitters {
       .mode("overwrite")
       .option("header", "true")
       .csv(outputPath)
-    println(s"\n[CMS] results written to $outputPath")
+    println(s"\n[FAST_AMS] results written to $outputPath")
 
-    val benchmarkReportPath  = "c:/Users/alexm/wiki-heavy-hitters/results/cms_benchmark_report.txt"
-    val benchmarkMetricsPath = "c:/Users/alexm/wiki-heavy-hitters/results/cms_benchmark_metrics.csv"
+    val benchmarkReportPath  = "c:/Users/alexm/wiki-heavy-hitters/results/fast_ams_benchmark_report.txt"
+    val benchmarkMetricsPath = "c:/Users/alexm/wiki-heavy-hitters/results/fast_ams_benchmark_metrics.csv"
 
-    val reportContent = f"""Count-Min Sketch Threshold Heavy Hitters Benchmark
+    val reportContent = f"""Fast AMS / Count Sketch Threshold Heavy Hitters Benchmark
 Generated: ${java.time.LocalDateTime.now()}
 
 Parameters
-  epsilon              : $epsilon%.1e
+  epsilon^2            : $epsilonSquared%.1e
   delta                : $delta%.1e
   phi                  : $phi%.1e
-  width (w)            : ${cms.width}
-  depth (d)            : ${cms.depth}
+  numTables (t)        : $numTables
+  tableSize (b)        : $tableSize
 
-Memory
-  CMS table size       : $memoryKB%.2f KB  (${cms.counterCount} counters x 8 bytes)
+Memory (worst case, fully populated)
+  Sketch upper bound   : $maxMemoryKB%.2f KB  (${numTables.toLong * tableSize.toLong} counters x 8 bytes)
 
 Runtime & Throughput
   Total stream rows    : $rowsSeen
-  Total weighted N     : ${cms.totalWeight}
+  Total weighted N     : ${sketch.totalWeightSeen}
   Wall-clock time      : $runtimeSec%.2f s
   Throughput           : $throughput%.0f rows/s
 
 Heavy hitters
-  CMS threshold        : $finalThreshold
+  Sketch threshold     : $finalThreshold
   Exact threshold      : $trueThreshold
-  CMS  HH count        : ${cmsHHKeys.size}
-  True HH count        : ${trueHHKeys.size}
+  Sketch HH count      : ${sketchHHKeys.size}
+  True   HH count      : ${trueHHKeys.size}
   True positives       : $truePositives
   False positives      : $falsePositives
   False negatives      : $falseNegatives
@@ -346,41 +326,38 @@ Heavy hitters
 
     Files.write(Paths.get(benchmarkReportPath),
                 reportContent.getBytes(StandardCharsets.UTF_8))
-    println(s"[CMS] benchmark report written to $benchmarkReportPath")
+    println(s"[FAST_AMS] benchmark report written to $benchmarkReportPath")
 
-    val metricsHeader = "algorithm,epsilon,delta,phi,width,depth,memory_kb,rows,total_weight," +
-                        "runtime_s,throughput_rows_s,cms_hh,true_hh,true_positives,false_positives," +
+    val metricsHeader = "algorithm,eps_sq,delta,phi,num_tables,table_size,max_memory_kb,rows,total_weight," +
+                        "runtime_s,throughput_rows_s,sketch_hh,true_hh,true_positives,false_positives," +
                         "false_negatives,precision_pct,recall_pct,mean_freq_error,max_freq_error," +
                         "mean_rel_error_pct,max_rel_error_pct"
-    val metricsLine   = f"CMS,$epsilon%.1e,$delta%.1e,$phi%.1e,${cms.width},${cms.depth},$memoryKB%.2f," +
-                        f"$rowsSeen,${cms.totalWeight},$runtimeSec%.2f,$throughput%.0f," +
-                        f"${cmsHHKeys.size},${trueHHKeys.size},$truePositives,$falsePositives,$falseNegatives," +
+    val metricsLine   = f"FAST_AMS,$epsilonSquared%.1e,$delta%.1e,$phi%.1e,$numTables,$tableSize,$maxMemoryKB%.2f," +
+                        f"$rowsSeen,${sketch.totalWeightSeen},$runtimeSec%.2f,$throughput%.0f," +
+                        f"${sketchHHKeys.size},${trueHHKeys.size},$truePositives,$falsePositives,$falseNegatives," +
                         f"${precision * 100}%.1f,${recall * 100}%.1f," +
                         f"$meanFreqErr%.0f,$maxFreqErr%.0f," +
                         f"${meanRelErr * 100}%.2f,${maxRelErr * 100}%.2f"
 
     val metricsFile = Paths.get(benchmarkMetricsPath)
-    val sketchKey = f"CMS,$epsilon%.1e,$delta%.1e,$phi%.1e,${cms.width},${cms.depth}"
+    val sketchKey = f"FAST_AMS,$epsilonSquared%.1e,$delta%.1e,$phi%.1e,$numTables,$tableSize"
     if (!Files.exists(metricsFile)) {
       Files.write(metricsFile,
                   (metricsHeader + "\n" + metricsLine + "\n").getBytes(StandardCharsets.UTF_8))
     } else {
       val lines = Files.readAllLines(metricsFile, StandardCharsets.UTF_8).asScala.toVector
       val hasCurrentHeader = lines.headOption.contains(metricsHeader)
-
-      // If file is from older top-k schema, reset to the threshold schema.
       if (!hasCurrentHeader) {
         Files.write(metricsFile,
                     (metricsHeader + "\n" + metricsLine + "\n").getBytes(StandardCharsets.UTF_8))
       } else {
         val existingRows = lines.drop(1).filter(_.nonEmpty)
-        // Replace only the row for the same sketch key; preserve rows for other sketches.
         val filteredRows = existingRows.filterNot(_.startsWith(sketchKey + ","))
         val output = (Vector(metricsHeader) ++ filteredRows :+ metricsLine).mkString("\n") + "\n"
         Files.write(metricsFile, output.getBytes(StandardCharsets.UTF_8))
       }
     }
-    println(s"[CMS] benchmark metrics upserted at $benchmarkMetricsPath")
+    println(s"[FAST_AMS] benchmark metrics upserted at $benchmarkMetricsPath")
 
     spark.stop()
   }

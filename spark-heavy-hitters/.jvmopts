@@ -1,0 +1,9 @@
+-Xms4g
+-Xmx8g
+-XX:+UseG1GC
+-XX:G1HeapRegionSize=32m
+-XX:MaxGCPauseMillis=200
+-XX:G1ReservePercent=15
+-XX:ReservedCodeCacheSize=512m
+-XX:MaxMetaspaceSize=1g
+-Dfile.encoding=UTF-8
