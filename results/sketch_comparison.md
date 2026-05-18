@@ -147,4 +147,98 @@ All three runs share:
   recall / per-item frequency error.
 
 The only differences are sketch construction and parameter choice; results
-are therefore directly comparable.
+are therefore directly comparable **per benchmark**, but the three runs do
+not share a memory budget — see next section.
+
+---
+
+## Important caveat: the three sketches do NOT use equal memory
+
+Each benchmark was tuned independently to *hit good HH detection at its own
+φ*, not to equalize space. So "CMS wins" above is conditional on giving CMS
+a much larger budget than the others:
+
+| Sketch | Counters / longs | Bytes per cell | Memory | Multiple of smallest |
+|---|---:|---:|---:|---:|
+| CMS                  | 19,027,974 | 8  | **148 MB** | 1,584× |
+| Count Sketch (FastAMS) | 1,400,000 | 8  | **11 MB**  | 117×   |
+| Bucket-less AMS      | 4,000      | 24 | **94 KB**  | 1×     |
+
+So CMS gets ~13× the space of FastAMS and ~1,584× the space of AMS. The
+comparison is **not** apples-to-apples in memory.
+
+### Theory: space–accuracy tradeoff
+
+At a chosen accuracy ε and failure probability δ:
+
+| Sketch | Error | Space |
+|---|---|---|
+| CMS                    | `ε · ‖f‖_1 = ε · N`    | `O((1/ε) · log(1/δ))`  |
+| Count Sketch / AMS     | `ε · ‖f‖_2`            | `O((1/ε²) · log(1/δ))` |
+
+CMS is **linear in 1/ε**, AMS/Count Sketch is **quadratic in 1/ε**. So at
+the *same memory budget M*:
+
+```
+ε_CMS  ∝ 1/M          →  CMS error ∝ ‖f‖_1 / M
+ε_AMS  ∝ 1/√M         →  AMS error ∝ ‖f‖_2 / √M
+```
+
+AMS beats CMS at equal memory **iff**
+
+```
+‖f‖_2 / √M  <  ‖f‖_1 / M     ⇔     M < (‖f‖_1 / ‖f‖_2)²
+```
+
+That ratio is the "effective support" of the distribution. By Cauchy–Schwarz
+it's at most the number of distinct items, with equality on the uniform
+distribution.
+
+- **Uniform data**:  `‖f‖_1/‖f‖_2 ≈ √M_distinct` → AMS dominates over a huge
+  range of M.
+- **Heavy-tailed / Zipfian data**: a few items carry most of the L2 mass, so
+  `‖f‖_1/‖f‖_2` is **small**, and AMS only wins for tiny memory budgets.
+
+### Plugging in this dataset
+
+`‖f‖_1 = N ≈ 4.4×10^7`,  `‖f‖_2 ≈ 5.5×10^6` (back-computed from AMS noise).
+
+```
+‖f‖_1 / ‖f‖_2 ≈ 8
+(‖f‖_1 / ‖f‖_2)² ≈ 64
+```
+
+AMS only beats CMS at fewer than ~64 counters total — far below any useful
+working point. At realistic space CMS dominates **on this dataset**.
+
+### What an equal-memory comparison would predict
+
+If we capped all three at ~11 MB (the FastAMS budget) and aimed at the same
+φ=1e-4:
+
+| Sketch | Achievable params | Predicted error | Expected outcome |
+|---|---|---|---|
+| CMS                  | `w ≈ 196,000, d = 7`  → `ε ≈ 1.4e-5` | `ε·N ≈ 612` | precision/recall similar to FastAMS |
+| FastAMS              | unchanged (`b=1e5, t=14`)           | `‖f‖_2/√b ≈ 17,400` pre-median       | 98%/98% as reported |
+| Bucket-less AMS      | `s ≈ 45,800, t = 10` → `ε ≈ 0.019`  | `ε·‖f‖_2/√s ≈ 480`                   | accuracy OK, but runtime ~10+ days |
+
+So at equal memory:
+- CMS and FastAMS are roughly tied for nonnegative HH on this stream.
+- Bucket-less AMS could in principle reach φ=1e-4, but `s·t ≈ 4.6×10^5`
+  updates per record make it infeasible in wall time.
+
+### So which "winner" is real?
+
+It depends on the budget you equalize:
+
+| Equalize on | Winner | Notes |
+|---|---|---|
+| Same ε         | AMS / Count Sketch         | `ε·‖f‖_2 ≤ ε·‖f‖_1` always |
+| Same memory    | CMS ≈ FastAMS on Zipfian   | AMS only competitive at huge M |
+| Same wall time | **CMS** decisively         | Cheapest update path (`d` increments, no sign, no median) |
+| F₂ / self-join | **AMS** (original setting) | CMS cannot estimate F₂ at all |
+
+The CMS-vs-FastAMS-vs-AMS results in the previous sections should be read
+in light of this: they describe a particular *operating point* per sketch,
+not a uniform-budget shootout.
+
