@@ -1,0 +1,6 @@
+algorithm,partitions,memory_kb,top_k,total_rows,build_merge_s,throughput_rows_s,speedup_vs_p1,captured_topk,recall_pct,mean_rel_error_pct,max_rel_error_pct,max_abs_diff_vs_p1
+FastAMS,1,1024,100,10897474,51.785,210437,1.000,100,100.0,0.39,2.20,0
+FastAMS,2,1024,100,10897474,25.890,420909,2.000,100,100.0,0.39,2.20,0
+FastAMS,4,1024,100,10897474,17.127,636278,3.024,100,100.0,0.39,2.20,0
+FastAMS,8,1024,100,10897474,13.039,835764,3.972,100,100.0,0.39,2.20,0
+FastAMS,16,1024,100,10897474,14.036,776403,3.689,100,100.0,0.39,2.20,0

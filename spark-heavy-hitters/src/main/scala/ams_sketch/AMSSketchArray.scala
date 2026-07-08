@@ -20,6 +20,18 @@ class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
   }
 
   /**
+   * Update all copies using a pre-computed item index.
+   * Avoids re-hashing the key string in every copy.
+   */
+  def updateByIndex(index: Long, weight: Long): Unit = {
+    var i = 0
+    while (i < numCopies) {
+      sketches(i).updateByIndex(index, weight)
+      i += 1
+    }
+  }
+
+  /**
    * Average the estimates across all copies.
    * E[Y] = E[X] = 0, but Var[Y] = Var[X] / s.
    */
@@ -42,6 +54,17 @@ class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
     var i = 0
     while (i < numCopies) {
       sum += sketches(i).estimateFrequency(value)
+      i += 1
+    }
+    sum / numCopies
+  }
+
+  /** Estimate frequency using a pre-computed item index. */
+  def estimateFrequencyByIndex(index: Long): Long = {
+    var sum = 0L
+    var i = 0
+    while (i < numCopies) {
+      sum += sketches(i).estimateFrequencyByIndex(index)
       i += 1
     }
     sum / numCopies

@@ -1,0 +1,8 @@
+algorithm,memory_kb,params,phi,total_weight,threshold,hh_count,true_hh_count,tp,fp,fn,precision_pct,recall_pct,mean_rel_error_pct,max_rel_error_pct,runtime_s,throughput_rows_s
+MG,128,capacity=1024;eps=9.76e-04;target=phi*N,1.0e-04,44367267,4437,54,158,54,0,104,100.0,34.2,24.08,77.73,32.75,332747
+MG,256,capacity=2048;eps=4.88e-04;target=phi*N,1.0e-04,44367267,4437,77,158,77,0,81,100.0,48.7,21.29,61.60,37.11,293693
+MG,512,capacity=4096;eps=2.44e-04;target=phi*N,1.0e-04,44367267,4437,108,158,108,0,50,100.0,68.4,18.15,54.66,37.54,290274
+MG,1024,capacity=8192;eps=1.22e-04;target=phi*N,1.0e-04,44367267,4437,126,158,126,0,32,100.0,79.7,11.21,32.77,38.79,280913
+MG,2048,capacity=16384;eps=6.10e-05;target=phi*N,1.0e-04,44367267,4437,143,158,143,0,15,100.0,90.5,6.47,22.17,38.88,280285
+MG,4096,capacity=32768;eps=3.05e-05;target=phi*N,1.0e-04,44367267,4437,152,158,152,0,6,100.0,96.2,3.47,12.25,41.03,265578
+MG,8192,capacity=65536;eps=1.53e-05;target=phi*N,1.0e-04,44367267,4437,155,158,155,0,3,100.0,98.1,1.71,5.84,43.22,252140

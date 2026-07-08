@@ -22,6 +22,18 @@ class AMSSketchMedian(val rows: Array[AMSSketchArray], val delta: Double) extend
   }
 
   /**
+   * Update all rows using a pre-computed item index.
+   * Eliminates repeated string hashing across all t×s sketch copies.
+   */
+  def updateByIndex(index: Long, weight: Long): Unit = {
+    var i = 0
+    while (i < numMedianCopies) {
+      rows(i).updateByIndex(index, weight)
+      i += 1
+    }
+  }
+
+  /**
    * Compute the median of per-row averages.
    * Each row produces one estimate via averaging; the median selects
    * the middle value, achieving (1 - δ) confidence guarantee.
@@ -38,6 +50,13 @@ class AMSSketchMedian(val rows: Array[AMSSketchArray], val delta: Double) extend
    */
   def estimateFrequency(value: String): Long = {
     val estimates = rows.map(_.estimateFrequency(value))
+    scala.util.Sorting.quickSort(estimates)
+    estimates(numMedianCopies / 2)
+  }
+
+  /** Estimate frequency using a pre-computed item index. */
+  def estimateFrequencyByIndex(index: Long): Long = {
+    val estimates = rows.map(_.estimateFrequencyByIndex(index))
     scala.util.Sorting.quickSort(estimates)
     estimates(numMedianCopies / 2)
   }

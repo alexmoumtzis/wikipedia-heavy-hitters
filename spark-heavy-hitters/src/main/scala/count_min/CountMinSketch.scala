@@ -41,6 +41,24 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
     totalWeightAcc += count
   }
 
+  /**
+   * Add `count` occurrences and return the post-update estimate in one pass.
+   * This avoids re-hashing the same key for a separate estimate call.
+   */
+  def updateAndEstimate(key: String, count: Long): Long = {
+    var min = Long.MaxValue
+    var i = 0
+    while (i < depth) {
+      val col = bucket(key, i)
+      val v = table(i)(col) + count
+      table(i)(col) = v
+      if (v < min) min = v
+      i += 1
+    }
+    totalWeightAcc += count
+    min
+  }
+
   /** Min over the d cells the key hashes to. Never under-estimates true count. */
   def estimate(key: String): Long = {
     var min = Long.MaxValue
@@ -58,6 +76,39 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
 
   /** Number of long counters; multiply by 8 for bytes. */
   def counterCount: Long = depth.toLong * width.toLong
+
+  /** Deep copy of this sketch, including counters and total weight. */
+  def copy(): CountMinSketch = {
+    val out = new CountMinSketch(width, depth, seed)
+    var i = 0
+    while (i < depth) {
+      System.arraycopy(this.table(i), 0, out.table(i), 0, width)
+      i += 1
+    }
+    out.totalWeightAcc = this.totalWeightAcc
+    out
+  }
+
+  /**
+   * Merge with another sketch of identical shape and return a new sketch.
+   * Count-Min is linear under insertion-only updates.
+   */
+  def merge(other: CountMinSketch): CountMinSketch = {
+    require(this.width == other.width && this.depth == other.depth,
+      s"Cannot merge CountMinSketch with different shape: (${this.width},${this.depth}) vs (${other.width},${other.depth})")
+    val out = new CountMinSketch(width, depth, seed)
+    var i = 0
+    while (i < depth) {
+      var j = 0
+      while (j < width) {
+        out.table(i)(j) = this.table(i)(j) + other.table(i)(j)
+        j += 1
+      }
+      i += 1
+    }
+    out.totalWeightAcc = this.totalWeightAcc + other.totalWeightAcc
+    out
+  }
 
 }
 

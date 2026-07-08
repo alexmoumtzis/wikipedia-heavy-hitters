@@ -24,6 +24,16 @@ class AMSSketch(
     totalWeight += weight
   }
 
+  /**
+   * Update using a pre-computed item index (avoids redundant string hashing
+   * when the same key is fed to many sketch copies in the same row).
+   */
+  def updateByIndex(index: Long, weight: Long): Unit = {
+    val xi = xiGenerator.generate(index)
+    accumulator += weight * xi
+    totalWeight += weight
+  }
+
   /** Current accumulated value X = Σ f(i)ξᵢ. */
   def estimate(): Long = accumulator
 
@@ -35,6 +45,12 @@ class AMSSketch(
   def estimateFrequency(value: String): Long = {
     val index = AMSSketch.itemIndex(value)
     val xi    = xiGenerator.generate(index)
+    xi * accumulator
+  }
+
+  /** Estimate frequency using a pre-computed item index. */
+  def estimateFrequencyByIndex(index: Long): Long = {
+    val xi = xiGenerator.generate(index)
     xi * accumulator
   }
 

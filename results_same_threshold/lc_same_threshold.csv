@@ -1,0 +1,8 @@
+algorithm,memory_kb,params,phi,total_weight,threshold,hh_count,true_hh_count,tp,fp,fn,precision_pct,recall_pct,mean_rel_error_pct,max_rel_error_pct,runtime_s,throughput_rows_s
+LC,128,capacity=963;eps=1.04e-03;target=phi*N,1.0e-04,44367267,4437,47,158,47,0,111,100.0,29.7,0.00,0.00,36.70,296966
+LC,256,capacity=1927;eps=5.19e-04;target=phi*N,1.0e-04,44367267,4437,70,158,70,0,88,100.0,44.3,0.00,0.00,33.13,328980
+LC,512,capacity=3855;eps=2.59e-04;target=phi*N,1.0e-04,44367267,4437,114,158,114,0,44,100.0,72.2,0.00,0.00,33.62,324137
+LC,1024,capacity=7710;eps=1.30e-04;target=phi*N,1.0e-04,44367267,4437,156,158,156,0,2,100.0,98.7,0.00,0.00,34.55,315430
+LC,2048,capacity=15420;eps=6.49e-05;target=phi*N,1.0e-04,44367267,4437,158,158,158,0,0,100.0,100.0,0.00,0.00,31.57,345174
+LC,4096,capacity=30840;eps=3.24e-05;target=phi*N,1.0e-04,44367267,4437,158,158,158,0,0,100.0,100.0,0.00,0.00,37.92,287373
+LC,8192,capacity=61680;eps=1.62e-05;target=phi*N,1.0e-04,44367267,4437,158,158,158,0,0,100.0,100.0,0.00,0.00,38.42,283641
