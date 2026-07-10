@@ -14,6 +14,12 @@
 spark-heavy-hitters/target/
 spark-heavy-hitters/project/target/
 spark-heavy-hitters/project/project/
+spark-heavy-hitters/compile_*.txt
+spark-heavy-hitters/*_output.txt
+spark-heavy-hitters/package_out.txt
+spark-heavy-hitters/run_*.txt
+spark-heavy-hitters/skew_*.txt
+spark-heavy-hitters/st_*.txt
 
 # Python
 __pycache__/

@@ -210,7 +210,9 @@ object AmsSameMemory {
       }
     }
     val totalRuntimeSec = (System.currentTimeMillis() - t0) / 1000.0
-    val runtimePerTier = totalRuntimeSec / tiers.length
+    // All tiers share the same stream pass and scoring pass; report the shared
+    // wall-clock runtime so throughput is not artificially inflated.
+    val sharedRuntimeSec = totalRuntimeSec
     val finalThresh = math.ceil(PHI * sketch.totalWeightSeen).toLong
 
     val uniqueCopies = tiers.map(_.copiesPerRow).distinct.sorted.toArray
@@ -295,7 +297,7 @@ object AmsSameMemory {
       val recall = if (trueHHKeys.nonEmpty) tp.toDouble / trueHHKeys.size else 0.0
       val meanRelErr = if (agg.relErrCount(ti) > 0) agg.relErrSum(ti) / agg.relErrCount(ti) else 0.0
       val maxRelErr = agg.relErrMax(ti)
-      val throughput = if (runtimePerTier > 0 && rowsSeen > 0) rowsSeen / runtimePerTier else 0.0
+      val throughput = if (sharedRuntimeSec > 0 && rowsSeen > 0) rowsSeen / sharedRuntimeSec else 0.0
       val row = MetricsRow(
         "AMS", tier.memKB,
         f"mode=${if (strictMode) "strict" else "fast"};t=$numRows;s=${tier.copiesPerRow};cmsW=${tier.cmsWidth};eps2=${"%.2e".format(tier.epsSq)}",
@@ -303,7 +305,7 @@ object AmsSameMemory {
         hhCount, trueHHKeys.size, tp, fp, fn,
         precision * 100.0, recall * 100.0,
         meanRelErr * 100.0, maxRelErr * 100.0,
-        runtimePerTier, throughput
+        sharedRuntimeSec, throughput
       )
       printRow(row)
       row
