@@ -9,41 +9,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold-based heavy hitters via Count-Min Sketch (Cormode & Muthukrishnan,
- * "Sketches" textbook, sec. 5.3.4.1 — cash-register model).
- *
- * Heavy hitter definition:
- *   An item x is a heavy hitter iff its true frequency f(x) > phi * N,
- *   where N is the total weight (sum of views) and 0 < phi < 1.
- *
- * Cash-register algorithm:
- *   - One global CMS, no partitioned merging, no top-k heap-with-cap heuristic.
- *   - For every arriving record (key, views):
- *       1. cms.update(key, views)
- *       2. est = cms.estimate(key)
- *       3. if est >= phi * runningN, mark key as a candidate heavy hitter
- *   - After the stream, requery the final merged sketch and keep only those
- *     candidates whose final estimate is still >= phi * finalN. CMS only
- *     over-estimates, so this yields no false negatives among items truly
- *     above the threshold (probability >= 1 - delta).
- *
- * Threshold (phi) estimation for this dataset:
- *   The book notes: "there are at most 1/phi possible true heavy hitters".
- *   The Wikimedia pageview dataset cleaned in this project has on the order of
- *   N ~ 1e8 .. 1e9 total weighted views across millions of distinct keys, with
- *   a strongly skewed (Zipf-like) distribution where the top page typically
- *   carries ~ 0.1 .. 1 % of total traffic.
- *
- *   Reasonable choices:
- *     phi = 1e-3  -> threshold = 0.1 % of N, up to ~1,000 heavy hitters
- *     phi = 1e-4  -> threshold = 0.01% of N, up to ~10,000 heavy hitters
- *     phi = 1e-5  -> threshold = 0.001% of N, up to ~100,000 (too permissive)
- *
- *   We default to phi = 1e-4: small enough to surface the long tail of popular
- *   pages while keeping the candidate set manageable. It should also pair well
- *   with the CMS epsilon (epsilon << phi is required so that the additive
- *   error epsilon * N does not dominate the threshold phi * N).
- *   At phi = 1e-4 and epsilon = 1e-6, error bound is 1% of threshold => safe.
+ * Threshold heavy hitters via Count-Min Sketch (cash-register model). An item x
+ * is a heavy hitter iff f(x) > phi*N. One global CMS is updated per row; a key is
+ * a candidate once its estimate >= phi*runningN, and survivors are re-checked
+ * against phi*finalN. CMS only over-counts, so there are no false negatives.
+ * Requires epsilon << phi (default phi=1e-4, epsilon=1e-6).
  */
 object CmsHeavyHitters {
 
@@ -51,31 +21,22 @@ object CmsHeavyHitters {
     val spark = SparkSession.builder()
       .appName("CmsHeavyHitters")
       .master("local[*]")
-      // Cap input partition size at read time so toLocalIterator() task result
-      // blocks fit in the driver heap, while preserving parquet scan order.
+      // Cap input partition size so toLocalIterator task results fit in the
+      // driver heap, while preserving parquet scan order.
       .config("spark.sql.files.maxPartitionBytes", 16L * 1024 * 1024) // 16 MiB
       .config("spark.sql.files.openCostInBytes", 4L * 1024 * 1024)
       .config("spark.driver.maxResultSize", "4g")
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    // -----------------------------------------------------------------------
-    // Parameters (override via positional args)
-    //   args(0): inputPath
-    //   args(1): outputPath
-    //   args(2): epsilon  (CMS additive error fraction of N)
-    //   args(3): delta    (CMS failure probability)
-    //   args(4): phi      (heavy-hitter threshold fraction of N)
-    //   args(5): baselinePath
-    // -----------------------------------------------------------------------
+    // Args: inputPath, outputPath, epsilon, delta, phi, baselinePath.
     val defaultInputPath     = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
     val defaultOutputPath    = "file:///C:/Users/alexm/wiki-heavy-hitters/results/cms_topk"
     val defaultBaselinePath  = "C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
 
     val inputPath    = if (args.length > 0) args(0) else defaultInputPath
     val outputPath   = if (args.length > 1) args(1) else defaultOutputPath
-    // epsilon must be << phi so that the CMS additive error (epsilon * N) is
-    // small compared to the heavy-hitter threshold (phi * N).
+    // epsilon must be << phi so CMS additive error (epsilon*N) stays small vs phi*N.
     val epsilon      = if (args.length > 2) args(2).toDouble else 1e-6
     val delta        = if (args.length > 3) args(3).toDouble else 1e-3
     val phi          = if (args.length > 4) args(4).toDouble else 1e-4
@@ -85,9 +46,6 @@ object CmsHeavyHitters {
     require(epsilon < phi, s"epsilon ($epsilon) must be < phi ($phi); otherwise " +
                            "CMS error swamps the heavy-hitter threshold")
 
-    // -----------------------------------------------------------------------
-    // CMS initialisation
-    // -----------------------------------------------------------------------
     val cms = CountMinSketch.fromEpsilonDelta(epsilon, delta)
     val memoryKB = cms.counterCount * 8L / 1024.0
     println("=" * 70)
@@ -95,9 +53,6 @@ object CmsHeavyHitters {
             f"width=${cms.width}  depth=${cms.depth}  memory=$memoryKB%.1f KB")
     println("=" * 70)
 
-    // -----------------------------------------------------------------------
-    // Discover parquet input files
-    // -----------------------------------------------------------------------
     val inputDir =
       if (inputPath.startsWith("file:///")) Paths.get(new URI(inputPath))
       else Paths.get(inputPath)
@@ -116,12 +71,8 @@ object CmsHeavyHitters {
     // No repartition / shuffle: preserve parquet scan order.
     val df = spark.read.parquet(parquetFiles: _*).select("key", "views")
 
-    // -----------------------------------------------------------------------
-    // Sequential cash-register stream:
-    //   For each row, update CMS, then test est >= phi * runningN.
-    //   We pull rows to the driver one-at-a-time via toLocalIterator to avoid
-    //   loading the whole dataset into driver memory.
-    // -----------------------------------------------------------------------
+    // Cash-register stream: update CMS per row, then test est >= phi*runningN.
+    // Rows are pulled one at a time via toLocalIterator to bound driver memory.
     val candidateHHs = mutable.HashSet.empty[String]
     var rowsSeen = 0L
     val streamStart = System.currentTimeMillis()
@@ -136,7 +87,7 @@ object CmsHeavyHitters {
         cms.update(key, views)
         val est = cms.estimate(key)
 
-        // Dynamic threshold uses the running N, for the cash-register model.
+        // Dynamic threshold uses running N (cash-register model).
         val runningThreshold = phi * cms.totalWeight
         if (est.toDouble >= runningThreshold) candidateHHs += key
 
@@ -151,10 +102,7 @@ object CmsHeavyHitters {
     println(s"\n[CMS] stream done. rows=$rowsSeen  N=${cms.totalWeight}  " +
             s"time=${runtimeSec}s  candidate_pool=${candidateHHs.size}")
 
-    // -----------------------------------------------------------------------
-    // Final pruning: requery final CMS and drop candidates whose estimate is
-    // no longer >= phi * finalN (threshold grew as N grew during the stream).
-    // -----------------------------------------------------------------------
+    // Final pruning: drop candidates below phi * finalN.
     val finalThreshold: Long = math.ceil(phi * cms.totalWeight).toLong
     val heavyHitters: Seq[(String, Long)] = candidateHHs.iterator
       .map(key => (key, cms.estimate(key)))
@@ -166,11 +114,7 @@ object CmsHeavyHitters {
     println(s"[CMS] final heavy hitters: ${cmsHHKeys.size}  " +
             s"(threshold = phi * N = $finalThreshold)")
 
-    // -----------------------------------------------------------------------
-    // Load exact baseline (sorted desc by total_views) and identify the true
-    // heavy-hitter set: keys with total_views > phi * N_exact. The baseline
-    // is globally sorted, so we can stop as soon as we drop below threshold.
-    // -----------------------------------------------------------------------
+    // Load exact baseline (sorted desc) and take keys with total_views > phi*N.
     val baselineDir =
       if (baselinePath.startsWith("file:///")) Paths.get(new URI(baselinePath))
       else Paths.get(baselinePath)
@@ -186,8 +130,7 @@ object CmsHeavyHitters {
       } finally stream.close()
     }
 
-    // True N can differ slightly from cms.totalWeight only if some rows were
-    // skipped due to nulls; use the exact baseline's own N for fairness.
+    // Use the exact baseline's own N for a fair threshold.
     val trueN: Long = spark.read.parquet(parquetFiles: _*)
       .agg(sqlSum("views"))
       .first().getLong(0)
@@ -220,9 +163,7 @@ object CmsHeavyHitters {
     println(s"[exact] true heavy hitters: ${trueHHKeys.size}  " +
             s"(threshold = phi * N_exact = $trueThreshold,  N_exact = $trueN)")
 
-    // -----------------------------------------------------------------------
-    // Benchmarks (set-based — k is now derived, not chosen)
-    // -----------------------------------------------------------------------
+    // Set-based metrics.
     val truePositives  = cmsHHKeys.intersect(trueHHKeys).size
     val falsePositives = cmsHHKeys.diff(trueHHKeys).size
     val falseNegatives = trueHHKeys.diff(cmsHHKeys).size
@@ -251,9 +192,6 @@ object CmsHeavyHitters {
     val meanRelErr  = mean(relErrors)
     val maxRelErr   = maxVal(relErrors)
 
-    // -----------------------------------------------------------------------
-    // Print benchmark report
-    // -----------------------------------------------------------------------
     println()
     println("=" * 70)
     println("  COUNT-MIN SKETCH  —  THRESHOLD HEAVY HITTERS BENCHMARK")
@@ -300,9 +238,7 @@ object CmsHeavyHitters {
       println(f"  ${key + mark}%-55s  $est%12d  $real%12d  ${relErr * 100}%7.2f%%")
     }
 
-    // -----------------------------------------------------------------------
-    // Save CMS heavy-hitter output + benchmark report
-    // -----------------------------------------------------------------------
+    // Save CMS heavy-hitter output + benchmark report.
     import spark.implicits._
     heavyHitters.toDF("key", "estimated_views")
       .coalesce(1)

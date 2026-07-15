@@ -9,17 +9,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Shared utilities for the skew-robustness sweep (Option A: fixed true top-K).
- *
- * Unlike the same-memory / same-threshold sweeps (which fix the distribution and
- * vary memory or threshold), this sweep fixes memory at one representative tier
- * and varies the data DISTRIBUTION via synthetic Zipf variants (plus the real
- * Wikimedia snapshot as a labeled reference point).
- *
- * Evaluation is threshold-free: each algorithm produces its own top-K estimated
- * keys, which are compared against the exact true top-K. Holding K constant across
- * variants keeps the task size fixed, so quality differences are attributable to
- * the distribution shape rather than to a drifting number of heavy hitters.
+ * Shared utilities for the skew-robustness sweep (fixed true top-K). Fixes
+ * memory at one tier and varies the data DISTRIBUTION via synthetic Zipf
+ * variants (plus the real Wikimedia snapshot). Threshold-free: each algorithm's
+ * own top-K is compared against the exact top-K, so quality differences reflect
+ * distribution shape rather than a drifting number of heavy hitters.
  */
 object SkewRunner {
 
@@ -43,8 +37,8 @@ object SkewRunner {
   def expTag(s: Double): String = f"$s%.1f".replace(".", "")
 
   /**
-   * Default variant list: the synthetic Zipf sweep plus, if present on disk, the
-   * real Wikimedia snapshot as a reference point.
+   * Default variant list: the synthetic Zipf sweep plus the real Wikimedia
+   * snapshot if present on disk.
    */
   def defaultVariants(
     cleanBaseDir:   String = defaultCleanBaseDir,

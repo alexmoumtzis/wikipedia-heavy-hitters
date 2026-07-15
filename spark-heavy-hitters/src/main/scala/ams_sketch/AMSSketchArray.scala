@@ -1,10 +1,8 @@
 package ams_sketch
 
 /**
- * Array of s independent AMS sketches for variance reduction via averaging.
- * s = ceil(16 / ε²) copies ensures Var[Y] = Var[X] / s where Y = mean(X₁,...,Xₛ).
- *
- * @param sketches Array of independent AMSSketch instances (distinct seeds)
+ * Array of s = ceil(16/ε²) independent AMS sketches; averaging reduces variance
+ * by a factor s.
  */
 class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
 
@@ -19,10 +17,7 @@ class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
     }
   }
 
-  /**
-   * Update all copies using a pre-computed item index.
-   * Avoids re-hashing the key string in every copy.
-   */
+  /** Update all copies using a pre-computed item index. */
   def updateByIndex(index: Long, weight: Long): Unit = {
     var i = 0
     while (i < numCopies) {
@@ -31,10 +26,7 @@ class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
     }
   }
 
-  /**
-   * Average the estimates across all copies.
-   * E[Y] = E[X] = 0, but Var[Y] = Var[X] / s.
-   */
+  /** Average the estimates across all copies (Var reduced by s). */
   def estimateWithAveraging(): Long = {
     var sum = 0L
     var i = 0
@@ -45,10 +37,7 @@ class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
     sum / numCopies
   }
 
-  /**
-   * Estimate the frequency of a single item by averaging unit-pulse inner products
-   * across all copies. Unbiased; variance reduced by factor s.
-   */
+  /** Per-item estimate averaged across all copies (unbiased, Var reduced by s). */
   def estimateFrequency(value: String): Long = {
     var sum = 0L
     var i = 0
@@ -70,10 +59,7 @@ class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
     sum / numCopies
   }
 
-  /**
-   * Merge two AMSSketchArrays (must have same numCopies and matching seeds).
-   * Merges each pair of sketches independently.
-   */
+  /** Merge two arrays of the same size, sketch by sketch. */
   def merge(other: AMSSketchArray): AMSSketchArray = {
     require(
       this.numCopies == other.numCopies,
@@ -96,24 +82,14 @@ class AMSSketchArray(val sketches: Array[AMSSketch]) extends Serializable {
 
 object AMSSketchArray {
 
-  /**
-   * Create an array with s = ceil(16 / epsilonSquared) independent sketches.
-   * Each sketch gets a distinct random seed.
-   *
-   * @param epsilonSquared Relative error parameter ε². Smaller ε² -> more copies.
-   */
+  /** Create s = ceil(16/epsilonSquared) sketches with distinct random seeds. */
   def apply(epsilonSquared: Double): AMSSketchArray = {
     val numCopies = math.ceil(16.0 / epsilonSquared).toInt
     val sketches  = Array.fill(numCopies)(AMSSketch.withRandomSeed())
     new AMSSketchArray(sketches)
   }
 
-  /**
-   * Create an array with an explicit number of copies.
-   * Each sketch gets a distinct random seed.
-   *
-   * @param numCopies Number of independent sketches to maintain
-   */
+  /** Create an array with an explicit number of copies. */
   def withCopies(numCopies: Int): AMSSketchArray = {
     val sketches = Array.fill(numCopies)(AMSSketch.withRandomSeed())
     new AMSSketchArray(sketches)

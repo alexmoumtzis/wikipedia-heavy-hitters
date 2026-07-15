@@ -2,17 +2,9 @@ package ams_sketch
 
 import org.scalatest.funsuite.AnyFunSuite
 
-/**
- * Unit tests for RandomVariableGenerator.
- *
- * Tests verify:
- * 1. Correctness: generated values are -1 or +1
- * 2. Statistical properties: mean ≈ 0 (unbiased)
- * 3. Independence: pairwise and higher-order independence
- * 4. Reproducibility: same seed → same sequence
- * 5. Distinctness: different seeds → different sequences
- * 6. Multi-coefficient generation: generate4() and generateK()
- */
+/** Unit tests for RandomVariableGenerator: values in {-1, +1}, mean ~ 0,
+  * independence, reproducibility per seed, distinctness across seeds, and
+  * generate4() / generateK(). */
 class RandomVariableGeneratorSuite extends AnyFunSuite {
 
   test("Single coefficient generation produces only -1 or +1") {

@@ -9,15 +9,9 @@ import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-/** Same-memory sweep for FastAMS (Count Sketch).
- *
- * numTables t=7 is fixed. For each budget B KB:
- *   tableSize = B_bytes / (t * 8)
- *   epsilonSq = 16 / tableSize   (tableSize = ceil(16/eps²))
- *
- * A candidate pool is maintained during streaming; every true-HH key is also
- * directly queried for accurate recall.
- */
+/** Same-memory sweep for FastAMS (Count Sketch). numTables t=7 fixed;
+ *  tableSize = B_bytes/(t*8), eps^2 = 16/tableSize. A candidate pool is kept
+ *  during streaming and every true-HH key is also queried directly for recall. */
 object FastAmsSameMemory {
 
   val NUM_TABLES = 7

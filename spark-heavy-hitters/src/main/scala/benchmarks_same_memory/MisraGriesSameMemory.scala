@@ -8,16 +8,9 @@ import org.apache.spark.sql.functions.{sum => sqlSum}
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-memory sweep for Misra-Gries.
- *
- * For each budget B KB:
- *   capacity = B_bytes / avgBytesPerEntry   (avgBytesPerEntry = 128)
- *   epsilon  = 1.0 / (capacity + 1)
- *   reportThreshold = max(1, (phi - epsilon) * N)
- *
- * When epsilon >= phi (small memory tiers), all entries are reported;
- * this yields high recall but low precision — the data captures that trade-off.
- */
+/** Same-memory sweep for Misra-Gries. Per tier capacity = B_bytes/128,
+ *  epsilon = 1/(capacity+1), reportThreshold = max(1, (phi-epsilon)*N). When
+ *  epsilon >= phi all entries are reported (high recall, low precision). */
 object MisraGriesSameMemory {
 
   val AVG_BYTES_PER_ENTRY = 128L

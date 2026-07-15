@@ -4,12 +4,10 @@ import benchmarks_distributed.PartitionRunner.MergeableOps
 import count_min.CountMinSketch
 
 /**
- * Partition-scalability + mergeability benchmark for Count-Min (a LINEAR sketch).
- *
- * Every partition builds a CMS of identical shape and fixed seed, so the tables
- * are aligned and `merge` is exact counter-wise addition. The merged sketch is
- * therefore bit-identical to a single-pass sketch for any partition count:
- * accuracy is invariant and `max_abs_diff_vs_p1` stays 0.
+ * Partition-scalability + mergeability benchmark for Count-Min (linear sketch).
+ * Every partition builds an identically-shaped CMS, so `merge` is exact
+ * counter-wise addition and the merged sketch is bit-identical to a single pass
+ * (max_abs_diff_vs_p1 stays 0 for any P).
  */
 object CmsPartition extends PartitionBenchmarkBase[CountMinSketch] {
   val DEPTH = 5

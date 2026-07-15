@@ -4,34 +4,18 @@ import scala.collection.mutable
 import scala.util.Random
 
 /**
- * One-pass uniform reservoir sampling (Vitter 1985, Algorithm R style).
- *
- * Maintains a fixed-size reservoir of M stream positions. After processing N
- * unit items, every item seen so far is equally likely to be in the reservoir
- * with probability M / N (for N > M).
- *
- * For heavy-hitter benchmarking we derive a frequency estimator from the sample
- * proportion:
- *
- *   f_hat(x) = (c_sample(x) / m_eff) * N
- *
- * where m_eff = min(M, N) is the current reservoir fill size.
- *
- * Weighted update support:
- *   The dataset arrives as (key, views). This class treats `views = w` as w
- *   consecutive unit arrivals of the same key (exactly matching the stream
- *   semantics in the slides).
+ * One-pass uniform reservoir sampling (Vitter 1985, Algorithm R). Keeps M stream
+ * positions; frequency estimate f_hat(x) = (c_sample(x) / m_eff) * N with
+ * m_eff = min(M, N). Weighted: `views` is treated as w unit arrivals.
  */
 final class ReservoirSampling(val capacity: Int, seed: Long = 42L) extends Serializable {
   require(capacity > 0, "capacity must be > 0")
 
   private val rng = new Random(seed)
 
-  // Reservoir slots (size grows to at most capacity).
   private val sample = new Array[String](capacity)
   private var sampleSize = 0
 
-  // Token counts inside the current reservoir.
   private val sampleCounts = new mutable.HashMap[String, Long]()
 
   private var totalWeightAcc: Long = 0L
@@ -44,12 +28,10 @@ final class ReservoirSampling(val capacity: Int, seed: Long = 42L) extends Seria
       totalWeightAcc += 1L
 
       if (sampleSize < capacity) {
-        // Fill phase: insert directly.
         sample(sampleSize) = key
         sampleSize += 1
         sampleCounts.update(key, sampleCounts.getOrElse(key, 0L) + 1L)
       } else {
-        // Steady state: pick random stream position in [0, N-1].
         val j = nextLongBounded(totalWeightAcc)
         if (j < capacity) {
           val slot = j.toInt
@@ -90,7 +72,6 @@ final class ReservoirSampling(val capacity: Int, seed: Long = 42L) extends Seria
 
   /** Approximate resident memory in bytes. */
   def estimatedMemoryBytes: Long = {
-    // Reservoir slots + sampled token strings + map overhead.
     val slots = capacity.toLong * 8L
     var keysBytes = 0L
     val it = sampleCounts.keysIterator
@@ -106,7 +87,7 @@ final class ReservoirSampling(val capacity: Int, seed: Long = 42L) extends Seria
     if (c <= 1L) sampleCounts.remove(key) else sampleCounts.update(key, c - 1L)
   }
 
-  // Uniform long in [0, bound). bound must be > 0.
+  // Uniform long in [0, bound).
   private def nextLongBounded(bound: Long): Long = {
     require(bound > 0L, "bound must be > 0")
     val m = bound - 1L

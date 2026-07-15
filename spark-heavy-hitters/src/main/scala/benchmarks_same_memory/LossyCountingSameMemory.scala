@@ -8,16 +8,9 @@ import org.apache.spark.sql.functions.{sum => sqlSum}
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-memory sweep for Lossy Counting.
- *
- * For each budget B KB:
- *   capacity     = B_bytes / avgBytesPerEntry   (avgBytesPerEntry = 136)
- *   epsilon      = 1.0 / capacity
- *   bucketWidth  ≈ capacity
- *   reportThreshold = max(1, (phi - epsilon) * N)
- *
- * When epsilon >= phi, all tracked entries are reported (high recall / low precision).
- */
+/** Same-memory sweep for Lossy Counting. Per tier capacity = B_bytes/136,
+ *  epsilon = 1/capacity, reportThreshold = max(1, (phi-epsilon)*N). When
+ *  epsilon >= phi all tracked entries are reported (high recall, low precision). */
 object LossyCountingSameMemory {
 
   val AVG_BYTES_PER_ENTRY = 136L

@@ -3,24 +3,16 @@ package ams_sketch
 import scala.collection.mutable
 
 /**
- * Fast AMS Sketch: hash-table based counter organization.
- *
- * Organizes signed counters into numTables hash tables of size tableSize.
- * Each update touches exactly one bucket per table → O(numTables) update cost.
- * This is equivalent to Count Sketch: each table maps items to buckets via
- * independent hash families, accumulating weight·ξ(item) per bucket.
- *
- * F2 estimate per table: Σ_b counter[t][b]² (median across tables for confidence).
- *
- * @param numTables Number of hash tables (controls confidence, typically O(log(1/δ)))
- * @param tableSize Number of buckets per table (controls accuracy via collision rate)
+ * Fast AMS / Count Sketch: numTables hash tables of size tableSize holding signed
+ * counters. Each update touches one bucket per table (O(numTables)). Per-item
+ * estimate is the median of sign-corrected buckets; F2 estimate is the median of
+ * per-table sum-of-squares.
  */
 class FastAMSSketch(
   val numTables: Int,
   val tableSize: Int
 ) extends Serializable {
 
-  // Sparse counter store: hashTables(t)(bucket) = signed counter
   private val hashTables: Array[mutable.Map[Int, Long]] =
     Array.fill(numTables)(mutable.Map.empty[Int, Long])
 
@@ -30,7 +22,7 @@ class FastAMSSketch(
   private def bucket(itemIdx: Long, t: Int): Int =
     (math.abs(HashUtils.murmurHash64(itemIdx, t.toLong)) % tableSize).toInt
 
-  /** Assign sign ∈ {-1, +1} for item index in table t. */
+  /** Sign in {-1, +1} for item index in table t. */
   private def sign(itemIdx: Long, t: Int): Long = {
     val h = HashUtils.murmurHash64(itemIdx ^ 0xdeadbeef15L, t.toLong)
     if ((h & 1L) == 0L) 1L else -1L
@@ -49,11 +41,7 @@ class FastAMSSketch(
     _totalWeight += weight
   }
 
-  /**
-   * Estimate the frequency of a single item (Count Sketch query):
-   *   For each table t, compute ξ(x,t) · counter[t][bucket(x,t)].
-   *   Each per-table estimate is unbiased; the median boosts confidence.
-   */
+  /** Per-item estimate: median over tables of sign-corrected bucket. */
   def estimateFrequency(value: String): Long = {
     val idx = AMSSketch.itemIndex(value)
     val ests = Array.ofDim[Long](numTables)
@@ -68,11 +56,7 @@ class FastAMSSketch(
     ests(numTables / 2)
   }
 
-  /**
-   * F2 estimate: median over tables of Σ_b counter[t][b]².
-   * Each table produces an unbiased F2 estimate (with collision noise);
-   * the median provides confidence across numTables independent estimates.
-   */
+  /** F2 estimate: median over tables of the sum of squared counters. */
   def estimate(): Long = {
     val perTable = Array.ofDim[Long](numTables)
     var t = 0
@@ -89,10 +73,7 @@ class FastAMSSketch(
   /** Total weight observed (N = Σ f(i)). */
   def totalWeightSeen: Long = _totalWeight
 
-  /**
-   * Merge two FastAMSSketches (must have same numTables and tableSize).
-   * Uses deterministic per-table seeds, so corresponding buckets are compatible.
-   */
+  /** Merge two sketches of the same shape (linear, lossless). */
   def merge(other: FastAMSSketch): FastAMSSketch = {
     require(
       this.numTables == other.numTables && this.tableSize == other.tableSize,
@@ -134,7 +115,7 @@ object FastAMSSketch {
     new FastAMSSketch(numTables, tableSize)
 
   /**
-   * Create with parameters derived from error/confidence bounds.
+   * Create from error/confidence bounds:
    * numTables = ceil(2·log(1/delta)), tableSize = ceil(16/epsilonSquared).
    */
   def apply(epsilonSquared: Double, delta: Double): FastAMSSketch = {

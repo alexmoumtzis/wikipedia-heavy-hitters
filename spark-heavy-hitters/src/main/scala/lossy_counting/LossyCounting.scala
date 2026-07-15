@@ -3,43 +3,11 @@ package lossy_counting
 import scala.collection.mutable
 
 /**
- * Lossy Counting summary (Manku & Motwani,
- * "Approximate Frequency Counts over Data Streams", VLDB 2002 — see S10P03.pdf).
- *
- * Deterministic, counter-based, insert-only frequency summary. The user picks a
- * support phi and an error eps; this class is parameterised on eps alone (the
- * support / threshold is applied by the query caller).
- *
- * Definitions (paper, Section 4.2):
- *   - The stream is conceptually divided into buckets of width  w = ceil(1/eps).
- *   - Buckets are labelled 1, 2, ...  The current bucket id is
- *         b_current = ceil(N / w)
- *     where N is the length of the stream seen so far.
- *   - The data structure D holds entries (e, f, delta): element, estimated
- *     frequency f, and the maximum possible error delta in f.
- *
- * Algorithm:
- *   On a new element e:
- *     if e in D : f_e <- f_e + 1
- *     else      : insert (e, 1, b_current - 1)
- *   At each bucket boundary (whenever N is a multiple of w) PRUNE D:
- *     delete (e, f, delta)  iff  f + delta <= b_current.
- *   Query with threshold phi: output entries with  f >= (phi - eps) * N.
- *
- * Guarantee: frequencies are UNDER-estimated by at most eps * N:
- *     f  <=  f_true  <=  f + eps * N
- * so Lossy Counting (like Misra-Gries) never over-estimates. Space is bounded
- * by (1/eps) * log(eps * N) entries.
- *
- * Weighted updates: the dataset delivers each record as (key, views) where
- * `views` is an aggregated weight. A single weighted update (e, w_e) is
- * identical to `w_e` consecutive unit updates of e: f increases by w_e (a new
- * entry is created with f = w_e and delta = b_current - 1 fixed at the first
- * unit), and N advances by w_e — possibly crossing several bucket boundaries.
- * Because no other entry changes during the burst, pruning once at the end with
- * the final boundary id yields exactly the same surviving set D as pruning at
- * every intermediate boundary (the deletion test f + delta <= b_current is
- * monotone in b_current).
+ * Lossy Counting summary (Manku & Motwani, VLDB 2002). Deterministic,
+ * insert-only. Stream split into buckets of width w = ceil(1/eps); entries hold
+ * (e, f, delta). On a boundary, drop entries with f + delta <= b_current.
+ * Under-estimates by at most eps*N; space bounded by (1/eps)*log(eps*N).
+ * Weighted: (key, weight) == weight unit updates, pruned once at the end.
  */
 final class LossyCounting(val epsilon: Double) extends Serializable {
   require(epsilon > 0.0 && epsilon < 1.0, "epsilon must be in (0, 1)")
@@ -47,18 +15,16 @@ final class LossyCounting(val epsilon: Double) extends Serializable {
   /** Bucket width w = ceil(1 / eps). */
   val bucketWidth: Long = math.ceil(1.0 / epsilon).toLong
 
-  // D: element -> (estimated frequency f, maximum error delta).
+  // element -> (estimated frequency f, maximum error delta).
   private val entries = new mutable.HashMap[String, (Long, Long)]()
 
   private var totalWeightAcc: Long = 0L
 
-  /** Add `weight` occurrences of `key` (weighted Lossy Counting update). */
+  /** Add `weight` occurrences of `key`. */
   def update(key: String, weight: Long): Unit = {
     require(weight >= 0, "weight must be >= 0")
     if (weight == 0L) return
 
-    // Current bucket id at the moment the first unit of this burst arrives:
-    //   b_current = ceil((N_before + 1) / w)
     val nBefore   = totalWeightAcc
     val bCurrent  = (nBefore + bucketWidth) / bucketWidth // ceil((nBefore+1)/w)
 
@@ -69,9 +35,9 @@ final class LossyCounting(val epsilon: Double) extends Serializable {
 
     totalWeightAcc += weight
 
-    // Prune at bucket boundary if this burst completed at least one new bucket.
-    val bBefore = nBefore / bucketWidth          // floor(N_before / w)
-    val bAfter  = totalWeightAcc / bucketWidth   // floor(N_after  / w)
+    // Prune if this burst crossed at least one bucket boundary.
+    val bBefore = nBefore / bucketWidth
+    val bAfter  = totalWeightAcc / bucketWidth
     if (bAfter > bBefore) prune(bAfter)
   }
 
@@ -90,14 +56,14 @@ final class LossyCounting(val epsilon: Double) extends Serializable {
   /** Estimated frequency f (under-estimate). 0 if not tracked. */
   def estimate(key: String): Long = entries.get(key).map(_._1).getOrElse(0L)
 
-  /** Maximum error delta for `key`. 0 if not tracked. */
+  /** Maximum error delta for `key`. */
   def error(key: String): Long = entries.get(key).map(_._2).getOrElse(0L)
 
   /** Upper bound on the true frequency: f + delta. */
   def upperBound(key: String): Long =
     entries.get(key).map { case (f, d) => f + d }.getOrElse(0L)
 
-  /** Total weight inserted (sum of all weights = stream length N). */
+  /** Total weight inserted (stream length N). */
   def totalWeight: Long = totalWeightAcc
 
   /** Current number of tracked entries. */
@@ -108,9 +74,8 @@ final class LossyCounting(val epsilon: Double) extends Serializable {
     entries.iterator.map { case (k, (f, d)) => (k, f, d) }
 
   /**
-   * Approximate resident memory in bytes. Lossy Counting stores the keys
-   * themselves plus two Longs (f and delta) per entry, with per-entry
-   * object/hash-bucket overhead.
+   * Approximate resident memory in bytes: keys plus f/delta Longs and
+   * per-entry overhead.
    */
   def estimatedMemoryBytes: Long = {
     var bytes = 0L

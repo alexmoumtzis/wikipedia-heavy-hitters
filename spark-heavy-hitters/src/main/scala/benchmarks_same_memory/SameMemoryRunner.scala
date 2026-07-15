@@ -6,11 +6,7 @@ import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-/**
- * Shared utilities for the same-memory sweep benchmarks.
- * All SameMemory benchmark objects live in package benchmarks_same_memory
- * and import from this object.
- */
+/** Shared utilities for the same-memory sweep benchmarks. */
 object SameMemoryRunner {
 
   val DEFAULT_MEMORY_TIERS_KB: Seq[Int] = Seq(128, 256, 512, 1024, 2048, 4096, 8192)
@@ -19,8 +15,6 @@ object SameMemoryRunner {
   val defaultInputPath    = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
   val defaultBaselinePath = "C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
   val defaultOutputDir    = "C:/Users/alexm/wiki-heavy-hitters/results_same_memory"
-
-  // ─── Data types ────────────────────────────────────────────────────────────
 
   case class MetricsRow(
     algorithm:      String,

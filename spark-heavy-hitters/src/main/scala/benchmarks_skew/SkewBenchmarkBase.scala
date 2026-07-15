@@ -8,19 +8,12 @@ import org.apache.spark.storage.StorageLevel
 import scala.collection.mutable
 
 /**
- * Template for a skew-robustness benchmark over a single fixed memory tier.
- *
- * Each concrete algorithm supplies how to build its structure, apply a weighted
- * update, report its total weight, and produce candidate (key, estimate) pairs.
- * The base drives the variant loop: for every dataset (synthetic Zipf variants
- * plus the real snapshot) it streams the pre-aggregated (key, views) once, asks
- * the algorithm for its estimated top-K, and scores it against the exact top-K.
- *
- * `needsKeyUniverse` distinguishes the two candidate styles:
- *  - sketches (CMS/AMS/FastAMS) can estimate any key, so they need the universe
- *    of observed keys to score and rank;
- *  - counters / samplers (MG/LC/SS/Concise/Reservoir) already hold an explicit
- *    set of tracked entries and ignore the universe.
+ * Template for a skew-robustness benchmark at a single fixed memory tier. Each
+ * algorithm supplies build/update/totalWeight and candidate (key, estimate)
+ * pairs; the base streams each dataset once and scores the estimated top-K
+ * against the exact top-K. `needsKeyUniverse` is true for sketches (which can
+ * estimate any key and need the observed-key universe to rank) and false for
+ * counters/samplers (which hold an explicit tracked set).
  */
 abstract class SkewBenchmarkBase[S] {
 

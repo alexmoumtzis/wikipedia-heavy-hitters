@@ -4,12 +4,7 @@ import concise_sampling.ConciseSampling
 
 import scala.collection.mutable
 
-/** Skew-robustness benchmark for Concise Sampling.
- *
- * Multiple seeds are averaged per variant to reduce stochastic variance, matching
- * the same-memory sweep. Candidates are the union of sampled keys with their
- * seed-averaged estimates.
- */
+/** Skew-robustness benchmark for Concise Sampling (seed-averaged per variant). */
 object ConciseSkew extends SkewBenchmarkBase[Seq[ConciseSampling]] {
   val AVG_BYTES_PER_ENTRY = 128L
   val SEEDS: Seq[Long] = Seq(41L, 42L, 43L, 44L, 45L)

@@ -4,28 +4,12 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 
 /**
- * Synthetic Zipf-distributed pageview generator for skew-robustness benchmarks.
+ * Synthetic Zipf pageview generator for skew-robustness benchmarks. Writes the
+ * same (key, views) parquet schema as WikimediaParser, one directory per
+ * exponent. Rank i gets weight round(N / (i^s * H)) with H = sum 1/i^s; keys are
+ * `synth_<rank>` so the exact top-K is always ranks 1..K.
  *
- * Emits the SAME schema as [[WikimediaParser]] — a parquet dataset with columns
- * (`key: String`, `views: Long`) — so every downstream baseline and benchmark
- * works unchanged.
- *
- * For a Zipf exponent `s` and vocabulary size `V`, rank `i in [1, V]` is assigned
- * weight proportional to `1 / i^s`, scaled so the total weight equals `N`:
- *
- *   views(i) = round( N / (i^s * H) ),   H = sum_{i=1..V} 1 / i^s
- *
- * Keys are `synth_<rank>` so the exact top-K is always ranks 1..K — this is what
- * makes the fixed-top-K (Option A) skew sweep clean: V and N are held constant
- * across variants, only `s` changes, so quality differences are attributable to
- * the distribution shape rather than to a drifting number of heavy hitters.
- *
- * Usage:
- *   ZipfGenerator [outputBaseDir] [exponentsCsv] [V] [N] [seed]
- * Defaults below mirror the real Wikimedia snapshot scale (N ~= 44.4M).
- * One parquet directory is written per exponent:
- *   <outputBaseDir>/synthetic_zipf_s{ss}_parquet
- * where {ss} is the exponent with the dot removed (e.g. s=1.0 -> "10").
+ * Usage: ZipfGenerator [outputBaseDir] [exponentsCsv] [V] [N] [seed]
  */
 object ZipfGenerator {
 
@@ -58,7 +42,7 @@ object ZipfGenerator {
     println(s"[ZipfGenerator] V=$V N=$N seed=$seed exponents=${exponents.mkString(",")}")
 
     exponents.foreach { s =>
-      // Harmonic normalizer H = sum_{i=1..V} 1/i^s, computed on the driver.
+      // Harmonic normalizer H = sum_{i=1..V} 1/i^s.
       var H = 0.0
       var i = 1
       while (i <= V) {

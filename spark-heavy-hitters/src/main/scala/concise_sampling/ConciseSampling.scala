@@ -4,35 +4,16 @@ import scala.collection.mutable
 import scala.util.Random
 
 /**
- * Concise Sampling (Gibbons & Matias 1998 style, per lecture slides):
- *
- *   - Keep multiset sample R as (value -> count) pairs.
- *   - Maintain threshold T (sampling probability p = 1 / T).
- *   - For each arriving element x:
- *       add to R with probability 1/T (increment count if present).
- *   - If total sample size |R| (count-sum) exceeds M:
- *       choose new threshold T' > T (here we double: T' = 2T)
- *       decrement each sampled token independently with probability
- *       1 - T / T' (equivalently keep each token with prob T/T').
- *       remove zero-count entries.
- *       continue with threshold T'.
- *
- * Frequency estimator for an element x at current threshold T:
- *
- *   f_hat(x) = count_R(x) * T
- *
- * which is unbiased under the Bernoulli sample at probability 1/T.
- *
- * Weighted update support:
- *   The dataset arrives as (key, views). We process each weight as repeated unit
- *   arrivals of the same key, matching the stream model in the slides.
+ * Concise Sampling (Gibbons & Matias 1998). Keeps a multiset R as (value ->
+ * count) with threshold T (accept prob 1/T). When |R| exceeds M, double T and
+ * subsample. Estimator f_hat(x) = count_R(x) * T. Weighted: `views` == w unit
+ * arrivals.
  */
 final class ConciseSampling(val capacity: Int, seed: Long = 42L) extends Serializable {
   require(capacity > 0, "capacity must be > 0")
 
   private val rng = new Random(seed)
 
-  // Sample multiset R stored as compressed (value -> count) pairs.
   private val counts = new mutable.HashMap[String, Long]()
   private var sampleTokenCount: Long = 0L // sum of counts in R
 
@@ -46,14 +27,12 @@ final class ConciseSampling(val capacity: Int, seed: Long = 42L) extends Seriali
     while (i < weight) {
       totalWeightAcc += 1L
 
-      // Add with probability 1 / T.
       if (acceptAtCurrentThreshold()) {
         val nc = counts.getOrElse(key, 0L) + 1L
         counts.update(key, nc)
         sampleTokenCount += 1L
       }
 
-      // If sample exceeded M, raise T and subsample until it fits.
       while (sampleTokenCount > capacity) {
         compactOnce()
       }
@@ -90,7 +69,7 @@ final class ConciseSampling(val capacity: Int, seed: Long = 42L) extends Seriali
     val it = counts.keysIterator
     while (it.hasNext) {
       val k = it.next()
-      bytes += 8L + 2L * k.length + 48L // count + chars + entry overhead
+      bytes += 8L + 2L * k.length + 48L
     }
     bytes
   }
@@ -100,11 +79,11 @@ final class ConciseSampling(val capacity: Int, seed: Long = 42L) extends Seriali
     else nextLongBounded(thresholdT) == 0L
   }
 
-  // Increase threshold and subsample each stored token independently.
+  // Double the threshold and subsample each stored token independently.
   private def compactOnce(): Unit = {
     val oldT = thresholdT
     val newT = oldT * 2L
-    val keepNum = oldT      // keep probability = oldT / newT = 1/2
+    val keepNum = oldT      // keep probability = 1/2
     val keepDen = newT
 
     val toRemove = mutable.ArrayBuffer.empty[String]
@@ -116,7 +95,6 @@ final class ConciseSampling(val capacity: Int, seed: Long = 42L) extends Seriali
       var kept = 0L
       var j = 0L
       while (j < c) {
-        // Keep with probability keepNum / keepDen.
         if (nextLongBounded(keepDen) < keepNum) kept += 1L
         j += 1L
       }
@@ -133,7 +111,7 @@ final class ConciseSampling(val capacity: Int, seed: Long = 42L) extends Seriali
     sampleTokenCount = newSampleSize
   }
 
-  // Uniform long in [0, bound). bound must be > 0.
+  // Uniform long in [0, bound).
   private def nextLongBounded(bound: Long): Long = {
     require(bound > 0L, "bound must be > 0")
     val m = bound - 1L

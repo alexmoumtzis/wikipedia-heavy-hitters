@@ -10,28 +10,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold-based heavy hitters via the Misra-Gries summary (Misra & Gries
- * 1982; weighted variant per Berinde et al. 2009). See encalgs-mg.pdf
- * (Cormode, "Misra-Gries Summaries") for the algorithm description.
- *
- * Heavy hitter definition (same as the other benchmarks):
- *   An item x is a TRUE heavy hitter iff f(x) > phi * N, where N is the total
- *   weight (sum of views) and 0 < phi < 1.
- *
- * Misra-Gries is a counter-based, insert-only summary that NEVER over-counts:
- *   f_hat(x) <= f(x) <= f_hat(x) + eps * N    with capacity k - 1, k = ceil(1/eps).
- *
- * Because it under-estimates (unlike Count-Min / AMS, which over-estimate), the
- * theoretically sound report rule is the eps-approximate one (Definition 2):
- *   report x iff f_hat(x) >= (phi - eps) * N.
- * This admits no false negatives among items with f(x) > phi * N, while keeping
- * false positives bounded to items with f(x) > (phi - eps) * N. We therefore
- * require eps < phi (mirroring the CMS benchmark's epsilon < phi requirement).
- *
- * Streaming model: identical cash-register simulation to the CMS/AMS benchmarks
- * — one global summary, parquet scan order preserved, rows pulled to the driver
- * one partition at a time via toLocalIterator(), a running candidate pool, and
- * a final prune against the terminal threshold.
+ * Threshold heavy hitters via Misra-Gries (1982; weighted variant per Berinde
+ * et al. 2009). Counter-based, insert-only, never over-counts (f_hat(x) <= f(x)
+ * <= f_hat(x) + eps*N, capacity k-1, k = ceil(1/eps)). Under-estimates, so uses
+ * the eps-approximate report rule f_hat(x) >= (phi - eps)*N (requires eps < phi).
+ * Same cash-register simulation as the other benchmarks.
  */
 object MisraGriesHeavyHitters {
 

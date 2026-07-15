@@ -9,16 +9,9 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-threshold sweep for Lossy Counting.
- *
- * Heavy-hitter target is enforced as:
- *   report threshold = ceil(phi * N)
- * for every memory tier, matching same-threshold policy.
- *
- * Unlike the same-memory sweep (which relaxes the threshold to (phi - eps) * N
- * to preserve Lossy Counting's recall guarantee), this benchmark holds the
- * reporting target fixed at phi * N so all algorithms are judged identically.
- */
+/** Same-threshold sweep for Lossy Counting: report threshold fixed at ceil(phi*N)
+ *  (not relaxed to (phi-eps)*N as in the same-memory sweep) so all algorithms are
+ *  judged identically. */
 object LossyCountingSameThreshold {
 
   val AVG_BYTES_PER_ENTRY = 136L

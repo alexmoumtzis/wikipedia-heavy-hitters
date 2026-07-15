@@ -10,28 +10,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold-based heavy hitters via the Lossy Counting summary (Manku &
- * Motwani, VLDB 2002). See S10P03.pdf.
- *
- * Heavy hitter definition (same as the other benchmarks):
- *   An item x is a TRUE heavy hitter iff f(x) > phi * N, where N is the total
- *   weight (sum of views) and 0 < phi < 1.
- *
- * Lossy Counting is a deterministic, counter-based, insert-only summary that
- * NEVER over-counts:
- *   f_hat(x) <= f(x) <= f_hat(x) + eps * N,   with bucket width w = ceil(1/eps).
- *
- * Because it under-estimates (like Misra-Gries, and unlike Count-Min / AMS /
- * Space-Saving which over-estimate), we use the eps-approximate report rule:
- *   report x iff f_hat(x) >= (phi - eps) * N.
- * This admits no false negatives among items with f(x) > phi * N (the paper's
- * Theorem 4.2: every item with frequency >= phi*N is output, and no item with
- * frequency < (phi - eps)*N is output). We therefore require eps < phi.
- *
- * Streaming model: identical cash-register simulation to the CMS/AMS/MG/SS
- * benchmarks — one global summary, parquet scan order preserved, rows pulled to
- * the driver one partition at a time via toLocalIterator(), a running candidate
- * pool, and a final prune against the terminal threshold.
+ * Threshold heavy hitters via Lossy Counting (Manku & Motwani, VLDB 2002).
+ * Deterministic, insert-only, never over-counts (f_hat(x) <= f(x) <= f_hat(x) +
+ * eps*N). Under-estimates, so uses the eps-approximate report rule
+ * f_hat(x) >= (phi - eps)*N (requires eps < phi). Same cash-register simulation
+ * as the other benchmarks.
  */
 object LossyCountingHeavyHitters {
 

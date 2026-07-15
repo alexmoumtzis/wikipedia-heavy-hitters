@@ -1,12 +1,8 @@
 package ams_sketch
 
 /**
- * Single AMS sketch: maintains X = Σᵢ f(i)·ξᵢ where ξᵢ ∈ {-1, +1}.
- * E[X²] = ||f||²₂. Sketches with same seed can be merged linearly.
- *
- * @param seed        Seed for ξᵢ generator (must match for merging)
- * @param accumulator Running sum Σ f(i)ξᵢ
- * @param totalWeight Total weight observed
+ * Single AMS sketch: maintains X = Σᵢ f(i)·ξᵢ with ξᵢ ∈ {-1, +1}, E[X²] = ||f||²₂.
+ * Same-seed sketches merge linearly.
  */
 class AMSSketch(
   val seed: Long,
@@ -24,10 +20,7 @@ class AMSSketch(
     totalWeight += weight
   }
 
-  /**
-   * Update using a pre-computed item index (avoids redundant string hashing
-   * when the same key is fed to many sketch copies in the same row).
-   */
+  /** Update using a pre-computed item index (avoids re-hashing the key). */
   def updateByIndex(index: Long, weight: Long): Unit = {
     val xi = xiGenerator.generate(index)
     accumulator += weight * xi
@@ -38,9 +31,8 @@ class AMSSketch(
   def estimate(): Long = accumulator
 
   /**
-   * Estimate the frequency of a single item via unit-pulse inner product:
-   *   f̂(x) = ξ(x) · X = f(x) + noise (cross-terms have zero expectation).
-   * Unbiased but high-variance; use AMSSketchArray.estimateFrequency for averaging.
+   * Per-item estimate via unit-pulse inner product f̂(x) = ξ(x)·X. Unbiased but
+   * high-variance; use AMSSketchArray.estimateFrequency for averaging.
    */
   def estimateFrequency(value: String): Long = {
     val index = AMSSketch.itemIndex(value)
@@ -57,10 +49,7 @@ class AMSSketch(
   /** Total weight observed (N = Σ f(i)). */
   def totalWeightSeen: Long = totalWeight
 
-  /**
-   * Merge two sketches (must have same seed).
-   * Exploits linearity: X_{A∪B} = X_A + X_B.
-   */
+  /** Merge two sketches with the same seed (X_{A∪B} = X_A + X_B). */
   def merge(other: AMSSketch): AMSSketch = {
     require(
       this.seed == other.seed,

@@ -3,14 +3,10 @@ import scala.util.Random
 import scala.util.hashing.MurmurHash3
 
 /**
- * Count-Min Sketch (Cormode & Muthukrishnan, 2005).
- *
- * Maintains a d x w table of counters. Each item is hashed to one bucket per row
- * using d independent hash functions. Estimate of an item's frequency is the min
- * across its d cells, which is biased upward (never under-counts) by at most
- * epsilon * N with probability >= 1 - delta, when w = ceil(e/eps), d = ceil(ln(1/delta)).
- *
- * Use weighted updates (count can be > 1) WEIGHTS in this case are the total views in the dataset column.
+ * Count-Min Sketch (Cormode & Muthukrishnan, 2005). A d x w counter table with
+ * d independent hashes; estimate is the min over the d cells. Never under-counts;
+ * error <= eps*N w.p. >= 1-delta for w = ceil(e/eps), d = ceil(ln(1/delta)).
+ * Weighted updates: `count` is the aggregated view weight.
  */
 final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) extends Serializable {
   require(width > 0, "width must be > 0")
@@ -18,7 +14,7 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
 
   private val table: Array[Array[Long]] = Array.ofDim[Long](depth, width)
 
-  // One independent seed per row, derived deterministically from `seed`.
+  // One independent seed per row, derived from `seed`.
   private val seeds: Array[Int] = {
     val rng = new Random(seed)
     Array.fill(depth)(rng.nextInt())
@@ -43,7 +39,6 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
 
   /**
    * Add `count` occurrences and return the post-update estimate in one pass.
-   * This avoids re-hashing the same key for a separate estimate call.
    */
   def updateAndEstimate(key: String, count: Long): Long = {
     var min = Long.MaxValue
@@ -59,7 +54,7 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
     min
   }
 
-  /** Min over the d cells the key hashes to. Never under-estimates true count. */
+  /** Min over the d cells the key hashes to. */
   def estimate(key: String): Long = {
     var min = Long.MaxValue
     var i = 0
@@ -71,13 +66,13 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
     min
   }
 
-  /** Total weight inserted (sum of all `count`s). */
+  /** Total weight inserted. */
   def totalWeight: Long = totalWeightAcc
 
   /** Number of long counters; multiply by 8 for bytes. */
   def counterCount: Long = depth.toLong * width.toLong
 
-  /** Deep copy of this sketch, including counters and total weight. */
+  /** Deep copy of this sketch. */
   def copy(): CountMinSketch = {
     val out = new CountMinSketch(width, depth, seed)
     var i = 0
@@ -90,8 +85,7 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
   }
 
   /**
-   * Merge with another sketch of identical shape and return a new sketch.
-   * Count-Min is linear under insertion-only updates.
+   * Merge with another sketch of identical shape (linear, lossless).
    */
   def merge(other: CountMinSketch): CountMinSketch = {
     require(this.width == other.width && this.depth == other.depth,
@@ -113,11 +107,7 @@ final class CountMinSketch(val width: Int, val depth: Int, seed: Long = 42L) ext
 }
 
 object CountMinSketch {
-  /**
-   * Build a sketch sized for additive error <= epsilon * N with probability >= 1 - delta.
-   *   w = ceil(e / epsilon)
-   *   d = ceil(ln(1 / delta))
-   */
+  /** Build a sketch with w = ceil(e/eps), d = ceil(ln(1/delta)). */
   def fromEpsilonDelta(epsilon: Double, delta: Double, seed: Long = 42L): CountMinSketch = {
     require(epsilon > 0.0 && epsilon < 1.0, "epsilon must be in (0, 1)")
     require(delta > 0.0 && delta < 1.0, "delta must be in (0, 1)")

@@ -11,30 +11,13 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 
 /**
- * Shared utilities for the distributed partition-scalability + mergeability sweep.
- *
- * Motivation. The same-memory / same-threshold / skew sweeps all build a single
- * structure by streaming the data once on the driver. That ignores a property
- * the project set out to study: how summaries behave when the stream is split
- * across Spark partitions/workers and the partial summaries must be MERGED.
- *
- * This sweep fixes the memory tier and the dataset and varies the number of
- * Spark partitions P. For each P it builds one structure per partition in
- * parallel (`mapPartitions`) and reduces them with the structure's own `merge`
- * via `treeReduce`. It then reports:
- *
- *  - scalability: build+merge wall-clock and throughput vs P, plus speedup;
- *  - merge fidelity: accuracy of the merged summary on the true top-K, and the
- *    maximum deviation of each top-K estimate from the single-partition (P=1)
- *    result.
- *
- * The contrast the project predicts:
- *  - LINEAR sketches (Count-Min, Count-Sketch/FastAMS) merge by adding counter
- *    tables, so the merged summary is BIT-IDENTICAL to the single-pass summary
- *    regardless of P: zero deviation, constant accuracy. Distribution is free.
- *  - COUNTER summaries (Misra-Gries) are mergeable only with a lossy prune step
- *    (Agarwal et al. 2012): each partition prunes independently, so accuracy can
- *    degrade and estimates can drift from the P=1 result as P grows.
+ * Shared utilities for the distributed partition-scalability + mergeability
+ * sweep. Fixes the memory tier and dataset and varies the partition count P:
+ * for each P it builds one structure per partition (`mapPartitions`) and reduces
+ * them with the structure's own `merge` (`treeReduce`), reporting build+merge
+ * time/throughput/speedup and merge fidelity (top-K accuracy and max deviation
+ * from the P=1 result). Linear sketches merge losslessly (zero deviation);
+ * counter summaries (Misra-Gries) merge with a lossy prune and can drift.
  */
 object PartitionRunner {
 
@@ -47,10 +30,8 @@ object PartitionRunner {
   val defaultOutputDir  = "C:/Users/alexm/wiki-heavy-hitters/results_distributed"
 
   /**
-   * Operations a structure must expose to be benchmarked here. Implementations
-   * are stateless singletons captured by Spark closures, so they must be
-   * Serializable; the per-partition state `S` must be Serializable too (it is
-   * shuffled to the driver for the final reduce).
+   * Operations a structure must expose to be benchmarked here. Captured by Spark
+   * closures, so both the ops and the per-partition state `S` must be Serializable.
    */
   trait MergeableOps[S] extends Serializable {
     def algoName: String
@@ -78,11 +59,8 @@ object PartitionRunner {
   )
 
   /**
-   * Drives the partition sweep for one algorithm and writes its CSVs.
-   *
-   * The dataset is read and cached once so the timed region measures only the
-   * repartition shuffle, the per-partition build, and the tree merge — not the
-   * parquet scan.
+   * Drives the partition sweep for one algorithm and writes its CSVs. The
+   * dataset is cached once so the timed region excludes the parquet scan.
    */
   def run[S: ClassTag](
     spark:          SparkSession,

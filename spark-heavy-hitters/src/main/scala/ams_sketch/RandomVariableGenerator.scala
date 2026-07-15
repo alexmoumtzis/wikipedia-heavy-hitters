@@ -1,10 +1,8 @@
 package ams_sketch
 
 /**
- * Generates 4-wise independent {-1, +1} random coefficients ξᵢ for AMS sketching.
- * Uses hash-based generation with O(log N) space.
- *
- * @param seed Random seed for reproducibility in distributed settings
+ * Generates 4-wise independent {-1, +1} coefficients ξᵢ for AMS sketching via
+ * hashing (O(log N) space).
  */
 class RandomVariableGenerator(seed: Long) extends Serializable {
 
@@ -14,19 +12,13 @@ class RandomVariableGenerator(seed: Long) extends Serializable {
     if ((hash & 1L) == 0L) 1L else -1L
   }
 
-  /**
-   * Generate 4 independent random coefficients for the same index.
-   * Used for binary-join queries or independent projection families.
-   */
+  /** Generate 4 independent coefficients for the same index. */
   def generate4(index: Long): (Long, Long, Long, Long) = {
     val arr = generateK(index, 4)
     (arr(0), arr(1), arr(2), arr(3))
   }
 
-  /**
-   * Generate k independent coefficients for the same index.
-   * Each coefficient is ∈ {-1, +1}.
-   */
+  /** Generate k independent coefficients in {-1, +1} for the same index. */
   def generateK(index: Long, k: Int): Array[Long] = {
     val result = new Array[Long](k)
     val base = index ^ seed

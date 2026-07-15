@@ -10,20 +10,10 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold heavy hitters using Concise Sampling (GM98-style, per slides).
- *
- * Heavy hitter definition:
- *   x is true heavy hitter iff f(x) > phi * N, where N is total weight.
- *
- * Estimator:
- *   f_hat(x) = count_R(x) * T
- * where T is the current sampling threshold (sampling probability 1/T).
- *
- * Report rule (heuristic, sampling-based):
- *   report x iff f_hat(x) >= phi * N.
- *
- * This method is probabilistic and intended for comparison against deterministic
- * heavy-hitter summaries.
+ * Threshold heavy hitters via Concise Sampling (Gibbons & Matias 1998).
+ * Estimator f_hat(x) = count_R(x) * T (T = current sampling threshold); reports
+ * x iff f_hat(x) >= phi*N. Probabilistic baseline for comparison against the
+ * deterministic summaries.
  */
 object ConciseSamplingHeavyHitters {
 

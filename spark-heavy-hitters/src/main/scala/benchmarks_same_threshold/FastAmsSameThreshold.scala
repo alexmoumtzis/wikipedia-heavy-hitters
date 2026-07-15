@@ -10,12 +10,8 @@ import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-/** Same-threshold sweep for FastAMS (Count Sketch variant).
- *
- * Heavy-hitter target is enforced as:
- *   report threshold = phi * N
- * for every memory tier, matching same-threshold policy.
- */
+/** Same-threshold sweep for FastAMS (Count Sketch): report threshold fixed at
+ *  phi*N for every memory tier. */
 object FastAmsSameThreshold {
 
   val NUM_TABLES = 7

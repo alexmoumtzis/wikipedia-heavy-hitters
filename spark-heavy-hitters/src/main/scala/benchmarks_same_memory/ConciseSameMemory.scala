@@ -8,17 +8,8 @@ import org.apache.spark.sql.functions.{sum => sqlSum}
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-memory sweep for Concise Sampling (Gibbons & Matias 1998).
- *
- * For each budget B KB:
- *   M = B_bytes / avgBytesPerEntry   (avgBytesPerEntry = 128)
- *   Estimate (per seed): f_hat_s(x) = count_R,s(x) * threshold_s
- *   reportThreshold = phi * N
- *
- * To reduce stochastic variance, run multiple seeds per tier and average:
- *   f_hat_avg(x) = mean_s f_hat_s(x)
- * Then report keys with f_hat_avg(x) >= phi * N.
- */
+/** Same-memory sweep for Concise Sampling. Per tier M = B_bytes/128; runs
+ *  several seeds and reports keys whose seed-averaged estimate >= phi*N. */
 object ConciseSameMemory {
 
   val AVG_BYTES_PER_ENTRY = 128L

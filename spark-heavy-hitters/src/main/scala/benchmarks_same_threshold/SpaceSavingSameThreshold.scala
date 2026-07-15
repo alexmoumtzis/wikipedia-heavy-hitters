@@ -9,13 +9,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-threshold sweep for Space-Saving.
- *
- * Heavy-hitter target is enforced as:
- *   report threshold = ceil(phi * N)
- * for every memory tier, matching same-threshold policy. Space-Saving
- * over-estimates, so the reported count is compared directly against phi * N.
- */
+/** Same-threshold sweep for Space-Saving: report threshold fixed at ceil(phi*N);
+ *  over-estimates, so the reported count is compared directly against phi*N. */
 object SpaceSavingSameThreshold {
 
   val AVG_BYTES_PER_ENTRY = 136L

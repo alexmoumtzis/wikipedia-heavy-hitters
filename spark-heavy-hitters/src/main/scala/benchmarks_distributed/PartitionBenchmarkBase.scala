@@ -5,20 +5,10 @@ import org.apache.spark.sql.SparkSession
 import scala.reflect.ClassTag
 
 /**
- * Template main for a partition-scalability + mergeability benchmark.
- *
- * Each concrete object supplies a `MergeableOps` describing how to build,
- * update, merge and query its structure; the base parses args, starts Spark,
- * runs the partition sweep, and stops Spark.
- *
- * Execution model: `local[*]` uses all available CPU cores as parallel worker
- * threads. This simulates the distributed case accurately for the two things
- * we measure: (1) merge CORRECTNESS — whether estimates degrade as partitions
- * increase — and (2) relative throughput scaling. What it does not capture is
- * real network serialization cost or executor-level GC isolation (which would
- * require a cluster or `local-cluster` mode). `local-cluster` fails on Windows
- * when launched from sbt due to a Worker process path-resolution bug; since the
- * merge semantics are identical on both modes, `local[*]` is used here.
+ * Template main for a partition-scalability + mergeability benchmark. Each
+ * concrete object supplies a `MergeableOps`; the base parses args, starts Spark,
+ * runs the sweep, and stops. `local[*]` faithfully captures merge correctness
+ * and relative throughput scaling (not network cost or executor GC isolation).
  *
  * Args (all optional): outputDir, memKB, topK, partitionsCsv (e.g. "1,2,4,8,16").
  */

@@ -1,19 +1,9 @@
 package ams_sketch
 
-/**
- * Shared hash utilities for AMS sketching.
- * Provides MurmurHash-based functions for deterministic, uniform hashing.
- */
+/** Shared MurmurHash-based hashing utilities for AMS sketching. */
 object HashUtils {
 
-  /**
-   * MurmurHash64 for Long values.
-   * Fast 64-bit hash with good avalanche properties.
-   *
-   * @param k    Input value to hash
-   * @param seed Seed for hash family selection
-   * @return 64-bit hash value
-   */
+  /** MurmurHash64 for Long values; `seed` selects the hash family. */
   def murmurHash64(k: Long, seed: Long): Long = {
     val m = 0xc6a4a7935bd1e995L
     val r = 47
@@ -34,17 +24,7 @@ object HashUtils {
     h
   }
 
-  /**
-   * Hash a String to a stable Long index.
-   * Processes UTF-8 bytes with MurmurHash-style mixing.
-   *
-   * Used to map item identifiers (page titles) to integer indices
-   * for coefficient lookup. Guarantees same string always maps to
-   * same index across JVM instances.
-   *
-   * @param value String to hash
-   * @return Deterministic 64-bit hash
-   */
+  /** Hash a String to a stable Long index (deterministic across JVMs). */
   def hashString(value: String): Long = {
     val bytes = value.getBytes("UTF-8")
     var h = 0xcafebabe00000000L
@@ -57,7 +37,6 @@ object HashUtils {
       i += 1
     }
 
-    // Final mixing (Murmur-style finalizer)
     h ^= h >>> 33
     h *= 0xff51afd7ed558ccdL
     h ^= h >>> 33

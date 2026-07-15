@@ -12,22 +12,11 @@ import scala.collection.mutable
 
 /** Same-memory sweep for AMS (AMSSketchMedian: averaging + median).
  *
- * Hybrid design (two optimisations over naïve AMS):
- *
- * 1. Pre-hash key once per row.
- *    Every AMSSketch copy previously called HashUtils.hashString independently.
- *    We compute the item index once and propagate it via updateByIndex /
- *    estimateFrequencyByIndex, cutting string-hash work from O(t·s) to O(1) per row.
- *
- * 2. CMS helper for candidate discovery (cash-register model, §5.3.4.1).
- *    The naïve loop queried AMS on every row — another O(t·s) pass.
- *    Instead, a small CMS (non-underestimating) is used during streaming to
- *    accumulate candidates cheaply (O(d) per row).  AMS is queried only once,
- *    over the final candidate set, at the end.
- *
- * Memory split per tier:  CMS_FRAC (15 %) → CMS helper; remainder → AMS.
- *   AMS: t rows × s copies, s = amsBytes / (t · 8),  ε² = 16/s
- *   CMS: depth=5, width = cmsBytes / (5 · 8)
+ * Two optimisations over naive AMS: (1) hash each key once per row and reuse the
+ * index via updateByIndex/estimateFrequencyByIndex; (2) a small CMS helper
+ * accumulates candidates cheaply during streaming, so AMS is queried only once
+ * over the final candidate set. Memory split per tier: CMS_FRAC to the helper,
+ * remainder to AMS (t rows x s copies, eps^2 = 16/s).
  */
 object AmsSameMemory {
 

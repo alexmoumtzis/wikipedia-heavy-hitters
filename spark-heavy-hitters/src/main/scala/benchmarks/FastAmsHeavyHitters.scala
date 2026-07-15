@@ -10,23 +10,10 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold-based heavy hitters via Fast AMS / Count Sketch
- * (Charikar, Chen, Farach-Colton 2002).
- *
- * Heavy hitter definition (same as CMS variant):
- *   An item x is a heavy hitter iff its true frequency f(x) > phi * N.
- *
- * Cash-register algorithm:
- *   - One global FastAMSSketch (numTables hash tables of tableSize signed counters).
- *   - For every (key, views): sketch.update(key, views); query est;
- *     if est >= phi * runningN, mark key as a candidate.
- *   - After the stream, requery the final sketch and keep only candidates whose
- *     final estimate is still >= phi * finalN.
- *
- * The Count Sketch per-item estimator is f̂(x) = median_t [ ξ(x,t) · counter[t][bucket(x,t)] ].
- * Unlike CMS this is unbiased (mean = f(x)) but can be negative on noise; this means
- * we may have BOTH false positives and false negatives, in contrast to CMS which only
- * over-estimates and therefore has only false positives.
+ * Threshold heavy hitters via Fast AMS / Count Sketch (Charikar et al. 2002).
+ * Same cash-register scheme as the CMS benchmark, but the per-item estimator
+ * median_t[ xi(x,t) * counter[t][bucket(x,t)] ] is unbiased and can go negative,
+ * so both false positives and false negatives are possible.
  */
 object FastAmsHeavyHitters {
 
@@ -34,8 +21,8 @@ object FastAmsHeavyHitters {
     val spark = SparkSession.builder()
       .appName("FastAmsHeavyHitters")
       .master("local[*]")
-      // Cap input partition size at read time so toLocalIterator() task result
-      // blocks fit in the driver heap, while preserving parquet scan order.
+      // Cap input partition size so toLocalIterator task results fit in the
+      // driver heap, while preserving parquet scan order.
       .config("spark.sql.files.maxPartitionBytes", 16L * 1024 * 1024) // 16 MiB
       .config("spark.sql.files.openCostInBytes", 4L * 1024 * 1024)
       .config("spark.driver.maxResultSize", "4g")

@@ -2,18 +2,9 @@ package ams_sketch
 
 import org.scalatest.funsuite.AnyFunSuite
 
-/**
- * Unit tests for AMSSketch.
- *
- * Tests verify:
- * 1. Correctness: accumulator updates correctly
- * 2. Linearity / merge: merged sketch equals union of sub-streams
- * 3. Seed enforcement: merging different-seed sketches is rejected
- * 4. Copy: snapshot is independent from original
- * 5. totalWeight tracking
- * 6. Unbiasedness: E[X²] ≈ ||f||²₂ across many seeds
- * 7. Performance
- */
+/** Unit tests for AMSSketch: update correctness, merge linearity, seed
+  * enforcement, copy independence, totalWeight, unbiasedness (E[X^2] ~ ||f||^2_2),
+  * and performance. */
 class AMSSketchSuite extends AnyFunSuite {
 
   // ─── helpers ─────────────────────────────────────────────────────────────

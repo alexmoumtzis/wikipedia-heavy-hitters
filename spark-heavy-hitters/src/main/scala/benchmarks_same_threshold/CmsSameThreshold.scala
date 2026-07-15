@@ -10,15 +10,8 @@ import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-/** Same-threshold sweep for Count-Min Sketch.
- *
- * This benchmark keeps the heavy-hitter target fixed across algorithms:
- *   report threshold = phi * N
- * where phi is shared globally and N is the final stream weight.
- *
- * Memory still varies by tier to show quality/runtime trade-offs under the
- * same reporting target.
- */
+/** Same-threshold sweep for Count-Min Sketch: report threshold fixed at phi*N
+ *  across all algorithms; memory varies by tier to show the trade-offs. */
 object CmsSameThreshold {
 
   val DEPTH = 5

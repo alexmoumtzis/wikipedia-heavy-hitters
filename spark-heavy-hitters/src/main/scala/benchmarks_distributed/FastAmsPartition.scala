@@ -5,13 +5,9 @@ import ams_sketch.FastAMSSketch
 
 /**
  * Partition-scalability + mergeability benchmark for FastAMS / Count-Sketch
- * (a LINEAR sketch).
- *
- * Each table uses deterministic per-table seeds, so corresponding buckets are
- * compatible across partitions and `merge` is signed counter-wise addition. As
- * with Count-Min the merged sketch equals the single-pass sketch: `estimate`
- * (a median of signed bucket reads) is invariant to the partition count, so
- * `max_abs_diff_vs_p1` stays 0.
+ * (linear sketch). Deterministic per-table seeds make buckets compatible across
+ * partitions, so `merge` is signed counter-wise addition and the merged sketch
+ * equals a single pass (max_abs_diff_vs_p1 stays 0 for any P).
  */
 object FastAmsPartition extends PartitionBenchmarkBase[FastAMSSketch] {
   val NUM_TABLES = 7

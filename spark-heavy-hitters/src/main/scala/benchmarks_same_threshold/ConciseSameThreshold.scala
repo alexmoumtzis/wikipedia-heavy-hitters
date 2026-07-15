@@ -9,17 +9,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-threshold sweep for Concise Sampling (Gibbons & Matias 1998).
- *
- * Heavy-hitter target is enforced as:
- *   report threshold = ceil(phi * N)
- * for every memory tier, matching same-threshold policy. Concise Sampling
- * already reports against phi * N, so only the output target is fixed and
- * labeled explicitly for cross-algorithm comparability.
- *
- * To reduce stochastic variance, run multiple seeds per tier and average:
- *   f_hat_avg(x) = mean_s f_hat_s(x)
- */
+/** Same-threshold sweep for Concise Sampling: fixed report threshold ceil(phi*N),
+ *  seed-averaged per tier for cross-algorithm comparability. */
 object ConciseSameThreshold {
 
   val AVG_BYTES_PER_ENTRY = 128L

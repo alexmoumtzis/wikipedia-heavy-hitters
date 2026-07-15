@@ -7,9 +7,7 @@ import org.apache.spark.sql.functions.{sum => sqlSum}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-/**
- * One-pass diagnostic: compare baseline true-HH keys against keys observed in the stream.
- */
+/** One-pass diagnostic: compare baseline true-HH keys against keys seen in the stream. */
 object ExactBaselineKeyDiag {
   def main(args: Array[String]): Unit = {
     val inputPath    = if (args.length > 0) args(0) else defaultInputPath

@@ -13,7 +13,7 @@ import numpy as np
 
 os.makedirs('figures', exist_ok=True)
 
-# ── Consistent style ────────────────────────────────────────────────────────
+# Consistent style
 plt.rcParams.update({
     'font.size': 10,
     'axes.titlesize': 11,
@@ -44,7 +44,7 @@ def grid(ax):
     ax.yaxis.grid(True, linestyle='--', alpha=0.5)
     ax.set_axisbelow(True)
 
-# ── Figure 1 : Baseline precision / recall / throughput ─────────────────────
+# Figure 1: baseline precision / recall / throughput
 precision  = [98.1, 98.1, 92.8, 96.3, 90.6, 77.1, 75.5]
 recall     = [98.1, 98.1, 98.1, 98.1, 98.1, 93.7, 89.9]
 throughput = [196132, 78109, 267600, 145786, 328208, 351929, 442106]
@@ -75,7 +75,7 @@ fig.savefig('figures/fig_baseline.pdf', bbox_inches='tight')
 plt.close(fig)
 print("✓ figures/fig_baseline.pdf")
 
-# ── Figure 2 : F1 vs memory budget ──────────────────────────────────────────
+# Figure 2: F1 vs memory budget
 MEM_KB = [128, 256, 512, 1024, 2048, 4096, 8192]
 F1 = {
     'CMS':       [0.0,  16.3, 75.2, 85.2, 96.6, 98.7, 99.7],
@@ -106,7 +106,7 @@ fig.savefig('figures/fig_f1_memory.pdf', bbox_inches='tight')
 plt.close(fig)
 print("✓ figures/fig_f1_memory.pdf")
 
-# ── Figure 3 : Skew robustness ──────────────────────────────────────────────
+# Figure 3: skew robustness
 SKEW_X      = [0, 1, 2, 3, 4, 5]
 SKEW_LABELS = ['s=0.6','s=0.8','s=1.0','s=1.2','s=1.5','wiki']
 SKEW_F1 = {
@@ -138,7 +138,7 @@ fig.savefig('figures/fig_skew.pdf', bbox_inches='tight')
 plt.close(fig)
 print("✓ figures/fig_skew.pdf")
 
-# ── Figure 4 : Distributed speedup + merge deviation ────────────────────────
+# Figure 4: distributed speedup + merge deviation
 P = [1, 2, 4, 8, 16]
 SPEEDUP = {
     'CMS':     [1.000, 1.766, 3.311, 4.443, 4.389],

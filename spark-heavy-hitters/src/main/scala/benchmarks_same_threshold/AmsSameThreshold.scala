@@ -12,17 +12,9 @@ import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-/** Same-threshold sweep for AMS (AMSSketchMedian).
- *
- * Enforced target for all tiers:
- *   final threshold = ceil(phi * N)
- *
- * Performance-oriented implementation:
- * - pre-aggregate (key, views) once
- * - one streaming pass for all memory tiers
- * - one AMS sketch at max copies; per-tier scoring uses prefix copies
- * - per-tier CMS helper for cheap candidate discovery + final CMS gate
- */
+/** Same-threshold sweep for AMS (AMSSketchMedian), fixed target ceil(phi*N).
+ *  One streaming pass for all tiers using one max-copy AMS sketch (prefix copies
+ *  per tier) plus a per-tier CMS helper for candidate discovery and the final gate. */
 object AmsSameThreshold {
 
   val DELTA_STRICT = 0.05

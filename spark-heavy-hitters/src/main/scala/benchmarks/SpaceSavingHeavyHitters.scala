@@ -10,28 +10,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold-based heavy hitters via the Space-Saving summary (Metwally,
- * Agrawal & El Abbadi, ICDT 2005). See
- * EfficientComputationOfFrequentAndTop-kElementsInDataStreams.pdf.
- *
- * Heavy hitter definition (same as the other benchmarks):
- *   An item x is a TRUE heavy hitter iff f(x) > phi * N, where N is the total
- *   weight (sum of views) and 0 < phi < 1.
- *
- * Space-Saving is a counter-based, insert-only summary that NEVER under-counts:
- *   count(x) - eps(x) <= f(x) <= count(x),  with eps(x) <= eps * N when m = ceil(1/eps).
- *
- * Because it over-estimates (like Count-Min / AMS, and unlike Misra-Gries which
- * under-estimates), we use the same report rule as the CMS benchmark:
- *   report x iff count(x) >= phi * N.
- * Over-estimation yields no false negatives among items truly above phi * N. We
- * require eps < phi so the over-estimation slack (eps * N) does not swamp the
- * heavy-hitter threshold (phi * N).
- *
- * Streaming model: identical cash-register simulation to the CMS/AMS/MG
- * benchmarks — one global summary, parquet scan order preserved, rows pulled to
- * the driver one partition at a time via toLocalIterator(), a running candidate
- * pool, and a final prune against the terminal threshold.
+ * Threshold heavy hitters via Space-Saving (Metwally et al., ICDT 2005).
+ * Counter-based, insert-only, never under-counts (count(x) - eps(x) <= f(x) <=
+ * count(x), eps(x) <= eps*N when m = ceil(1/eps)). Over-estimates, so uses the
+ * report rule count(x) >= phi*N (requires eps < phi). Same cash-register
+ * simulation as the other benchmarks.
  */
 object SpaceSavingHeavyHitters {
 

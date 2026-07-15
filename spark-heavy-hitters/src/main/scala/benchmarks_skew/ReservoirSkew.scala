@@ -4,12 +4,7 @@ import reservoir_sampling.ReservoirSampling
 
 import scala.collection.mutable
 
-/** Skew-robustness benchmark for Reservoir Sampling.
- *
- * Multiple seeds are averaged per variant to reduce stochastic variance, matching
- * the same-memory sweep. Candidates are the union of sampled keys with their
- * seed-averaged estimates.
- */
+/** Skew-robustness benchmark for Reservoir Sampling (seed-averaged per variant). */
 object ReservoirSkew extends SkewBenchmarkBase[Seq[ReservoirSampling]] {
   val AVG_BYTES_PER_SLOT = 128L
   val SEEDS: Seq[Long] = Seq(41L, 42L, 43L, 44L, 45L)

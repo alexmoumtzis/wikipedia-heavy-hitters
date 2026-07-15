@@ -1,12 +1,8 @@
 package ams_sketch
 
 /**
- * Array of t = ceil(2·log(1/δ)) independent AMSSketchArrays for confidence boosting via median.
- * Each row is an AMSSketchArray (averaging reduces variance); the median across rows
- * boosts confidence to (1 - δ) via Bernoulli tail bounds.
- *
- * @param rows Array of independent AMSSketchArray instances
- * @param delta Failure probability parameter
+ * Array of t = ceil(2·log(1/δ)) AMSSketchArrays; the median across rows boosts
+ * confidence to (1 - δ).
  */
 class AMSSketchMedian(val rows: Array[AMSSketchArray], val delta: Double) extends Serializable {
 
@@ -21,10 +17,7 @@ class AMSSketchMedian(val rows: Array[AMSSketchArray], val delta: Double) extend
     }
   }
 
-  /**
-   * Update all rows using a pre-computed item index.
-   * Eliminates repeated string hashing across all t×s sketch copies.
-   */
+  /** Update all rows using a pre-computed item index. */
   def updateByIndex(index: Long, weight: Long): Unit = {
     var i = 0
     while (i < numMedianCopies) {
@@ -33,21 +26,14 @@ class AMSSketchMedian(val rows: Array[AMSSketchArray], val delta: Double) extend
     }
   }
 
-  /**
-   * Compute the median of per-row averages.
-   * Each row produces one estimate via averaging; the median selects
-   * the middle value, achieving (1 - δ) confidence guarantee.
-   */
+  /** Median of per-row averages ((1 - δ) confidence). */
   def estimateWithConfidence(): Long = {
     val estimates = rows.map(_.estimateWithAveraging())
     scala.util.Sorting.quickSort(estimates)
     estimates(numMedianCopies / 2)
   }
 
-  /**
-   * Estimate the frequency of a single item: median across rows of per-row
-   * averaged unit-pulse inner products. (1 - δ)-confidence guarantee on accuracy.
-   */
+  /** Per-item estimate: median across rows of per-row averages ((1 - δ) confidence). */
   def estimateFrequency(value: String): Long = {
     val estimates = rows.map(_.estimateFrequency(value))
     scala.util.Sorting.quickSort(estimates)
@@ -64,10 +50,7 @@ class AMSSketchMedian(val rows: Array[AMSSketchArray], val delta: Double) extend
   /** Confidence guarantee: the estimate is correct with probability >= (1 - delta). */
   def confidenceBound(): Double = 1.0 - delta
 
-  /**
-   * Merge two AMSSketchMedians (must have same shape and matching seeds).
-   * Merges each corresponding row independently.
-   */
+  /** Merge two medians of the same shape, row by row. */
   def merge(other: AMSSketchMedian): AMSSketchMedian = {
     require(
       this.numMedianCopies == other.numMedianCopies,
@@ -90,24 +73,14 @@ class AMSSketchMedian(val rows: Array[AMSSketchArray], val delta: Double) extend
 
 object AMSSketchMedian {
 
-  /**
-   * Create with t = ceil(2·log(1/delta)) rows, each an AMSSketchArray of s = ceil(16/ε²) copies.
-   *
-   * @param epsilonSquared Relative error parameter ε² (controls copies per row)
-   * @param delta          Failure probability (controls number of rows)
-   */
+  /** Create t = ceil(2·log(1/delta)) rows of s = ceil(16/ε²) copies each. */
   def apply(epsilonSquared: Double, delta: Double): AMSSketchMedian = {
     val numRows = math.ceil(2.0 * math.log(1.0 / delta)).toInt
     val rows    = Array.fill(numRows)(AMSSketchArray(epsilonSquared))
     new AMSSketchMedian(rows, delta)
   }
 
-  /**
-   * Create with explicit row and copy counts.
-   *
-   * @param numMedianCopies Number of rows (median trials)
-   * @param numCopiesPerRow Number of sketches per row (averaging copies)
-   */
+  /** Create with explicit row and copy counts. */
   def withCopies(numMedianCopies: Int, numCopiesPerRow: Int): AMSSketchMedian = {
     val rows = Array.fill(numMedianCopies)(AMSSketchArray.withCopies(numCopiesPerRow))
     new AMSSketchMedian(rows, math.exp(-numMedianCopies / 2.0))

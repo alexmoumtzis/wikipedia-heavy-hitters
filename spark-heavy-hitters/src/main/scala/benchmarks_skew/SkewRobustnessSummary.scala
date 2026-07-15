@@ -5,21 +5,11 @@ import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
 /**
- * Collapses the per-variant skew sweep into a single robustness score per
- * algorithm, so "skew robustness" is reported as a metric rather than only a
- * table of curves.
- *
- * Reads `results_skew/skew_comparison.csv` (written by the per-algorithm skew
- * benchmarks) and emits `results_skew/skew_robustness_summary.csv` with, per
- * algorithm (over the SYNTHETIC variants only — the real snapshot is excluded
- * from the aggregate and reported separately as a reference):
- *
- *   - min_f1_pct       : worst-case F1 across the skew sweep (higher = more robust)
- *   - mean_f1_pct      : average F1 across the sweep
- *   - f1_spread_pct    : max_f1 - min_f1 (lower = more stable across skew)
- *   - f1_std_pct       : population std-dev of F1 across the sweep
- *   - max_rel_error_pct: worst mean-relative-error across the sweep
- *   - wiki_f1_pct      : F1 on the real Wikimedia snapshot, if present (else NaN)
+ * Collapses the per-variant skew sweep into one robustness score per algorithm.
+ * Reads `results_skew/skew_comparison.csv` and emits
+ * `results_skew/skew_robustness_summary.csv` with, per algorithm (over synthetic
+ * variants only; the real snapshot is reported separately): min/mean F1, F1
+ * spread and std-dev, worst mean-relative-error, and wiki F1 if present.
  */
 object SkewRobustnessSummary {
 

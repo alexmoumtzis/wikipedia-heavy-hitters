@@ -8,17 +8,8 @@ import org.apache.spark.sql.functions.{sum => sqlSum}
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-memory sweep for Reservoir Sampling (Vitter 1985).
- *
- * For each budget B KB:
- *   M = B_bytes / avgBytesPerSlot   (avgBytesPerSlot = 128)
- *   Estimate (per seed): f_hat_s(x) = sampleCount_s(x) / M * N
- *   reportThreshold = phi * N
- *
- * To reduce stochastic variance, run multiple seeds per tier and average:
- *   f_hat_avg(x) = mean_s f_hat_s(x)
- * Then report keys with f_hat_avg(x) >= phi * N.
- */
+/** Same-memory sweep for Reservoir Sampling. Per tier M = B_bytes/128; runs
+ *  several seeds and reports keys whose seed-averaged estimate >= phi*N. */
 object ReservoirSameMemory {
 
   val AVG_BYTES_PER_SLOT = 128L

@@ -10,22 +10,11 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold-based heavy hitters via classical AMS Sketch median construction
- * (Alon, Matias, Szegedy 1996 — with the Charikar/Chen/Farach-Colton 2002 unit-pulse
- * inner-product query for per-item frequency).
- *
- * Structure: t rows × s copies. Each row's average yields one unbiased estimator;
- * the median across rows boosts confidence to (1 - δ).
- *
- *   s = ceil(16 / epsilonSquared)        -- averaging copies per row
- *   t = ceil(2 · ln(1 / delta))           -- median rows
- *
- * Heavy-hitter query: f̂(x) = median_t [ (1/s) Σ_j ξ_{t,j}(x) · X_{t,j} ]
- *   = f(x) + cross-term noise with mean 0, variance ~ ||f||²₂ / s.
- *
- * NOTE: This variant updates s·t independent AMSSketch instances per record,
- * so it is much more expensive per insert than FastAMSSketch (which is O(t)).
- * Parameters are kept modest here so the benchmark completes in reasonable time.
+ * Threshold heavy hitters via the classical AMS median-of-averages sketch
+ * (Alon-Matias-Szegedy 1996; unit-pulse per-item query from Charikar et al.
+ * 2002). Uses t = ceil(2 ln(1/delta)) rows of s = ceil(16/eps^2) copies; the
+ * per-item estimate is median over rows of row averages. Much costlier per
+ * insert (s*t updates) than FastAMSSketch, so parameters are kept modest.
  */
 object AmsHeavyHitters {
 
@@ -33,10 +22,8 @@ object AmsHeavyHitters {
     val spark = SparkSession.builder()
       .appName("AmsHeavyHitters")
       .master("local[*]")
-      // toLocalIterator() ships one partition's serialised result to the driver
-      // at a time. We cap input partition size at read time so each task
-      // result block fits in the driver heap, while preserving parquet scan
-      // order (no shuffle).
+      // Cap input partition size so each toLocalIterator task result fits in the
+      // driver heap, preserving parquet scan order (no shuffle).
       .config("spark.sql.files.maxPartitionBytes", 16L * 1024 * 1024) // 16 MiB
       .config("spark.sql.files.openCostInBytes", 4L * 1024 * 1024)
       .config("spark.driver.maxResultSize", "4g")

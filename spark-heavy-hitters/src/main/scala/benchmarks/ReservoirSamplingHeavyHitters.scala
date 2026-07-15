@@ -10,20 +10,10 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
- * Threshold heavy hitters using one-pass uniform Reservoir Sampling (Vitter'85).
- *
- * Heavy hitter definition:
- *   x is true heavy hitter iff f(x) > phi * N, where N is total weight.
- *
- * Estimator:
- *   f_hat(x) = (c_sample(x) / m_eff) * N,  m_eff = min(M, N).
- *
- * Report rule (heuristic, sampling-based):
- *   report x iff f_hat(x) >= phi * N.
- *
- * This method is probabilistic and does not provide deterministic no-FN / no-FP
- * guarantees like MG/LC/SS/CMS at fixed epsilon, but provides an unbiased
- * frequency estimate from a bounded-memory sample.
+ * Threshold heavy hitters via one-pass uniform Reservoir Sampling (Vitter 1985).
+ * Estimator f_hat(x) = (c_sample(x)/m_eff)*N with m_eff = min(M, N); reports x
+ * iff f_hat(x) >= phi*N. Probabilistic baseline: unbiased estimate from a
+ * bounded-memory sample, no deterministic no-FN/no-FP guarantee.
  */
 object ReservoirSamplingHeavyHitters {
 

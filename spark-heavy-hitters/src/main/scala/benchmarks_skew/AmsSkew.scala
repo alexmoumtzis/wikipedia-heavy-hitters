@@ -7,16 +7,10 @@ import count_min.CountMinSketch
 
 /** Skew-robustness benchmark for AMS (AMSSketchMedian).
  *
- * The full memory budget is given to the AMS sketch. Rows are fixed at
- * t = ceil(2*ln(1/delta)) with delta = 0.20; the remaining budget sets
- * copies-per-row s, giving eps^2 = 16 / s.
- *
- * Scoring every observed key with AMS is infeasible: each `estimateFrequency`
- * averages ~`copiesPerRow` accumulators, so ranking a million-key universe costs
- * ~10^11 operations. To keep top-K extraction tractable the structure carries a
- * small auxiliary Count-Min sketch (not part of the AMS memory budget) that is
- * cheap to query (O(depth) per key). CMS over-estimates, so the true heavy
- * hitters always rank among its top-M; AMS then re-scores only that shortlist.
+ * The full budget goes to the AMS sketch (rows fixed at t = ceil(2*ln(1/delta)),
+ * delta = 0.20; remaining budget sets copies-per-row s, eps^2 = 16/s). Scoring
+ * every key with AMS is infeasible, so a small auxiliary Count-Min sketch (not
+ * counted in the AMS budget) shortlists candidates that AMS then re-scores.
  */
 object AmsSkew extends SkewBenchmarkBase[(AMSSketchMedian, CountMinSketch)] {
   val DELTA = 0.20

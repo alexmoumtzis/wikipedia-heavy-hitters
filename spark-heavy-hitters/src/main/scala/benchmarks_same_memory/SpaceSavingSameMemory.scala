@@ -8,13 +8,8 @@ import org.apache.spark.sql.functions.{sum => sqlSum}
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 
-/** Same-memory sweep for Space-Saving.
- *
- * For each budget B KB:
- *   capacity (m) = B_bytes / avgBytesPerEntry   (avgBytesPerEntry = 136)
- *   epsilon      = 1.0 / m
- *   reportThreshold = phi * N   (Space-Saving over-estimates, so no subtraction)
- */
+/** Same-memory sweep for Space-Saving. Per tier capacity m = B_bytes/136,
+ *  epsilon = 1/m, reportThreshold = phi*N (over-estimates, so no subtraction). */
 object SpaceSavingSameMemory {
 
   val AVG_BYTES_PER_ENTRY = 136L
