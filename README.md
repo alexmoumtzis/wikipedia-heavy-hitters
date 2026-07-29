@@ -1,7 +1,63 @@
 # Wikipedia Heavy Hitters
 
-This project benchmarks two major families of streaming heavy hitter algorithms—sketch-based (e.g., Count-Min Sketch, Count Sketch) and insert-only/counter-based (e.g., Misra-Gries, SpaceSaving)—using the Wikimedia pageview dataset. The goal is to evaluate these algorithms under realistic large-scale streaming conditions, focusing on trade-offs between accuracy, memory consumption, throughput, scalability, and distributed mergeability.
+This repository benchmarks streaming heavy-hitter algorithms on the Wikimedia pageview dataset using Apache Spark. The study compares sketch-based methods (such as Count-Min Sketch and FastAMS/Count Sketch) with insert-only counter-based methods (such as Misra-Gries, Space-Saving, and Lossy Counting), along with sampling baselines and an exact Spark baseline.
 
-The dataset consists of real-time and historical Wikipedia page requests, replayed as a simulated data stream in Apache Spark. This setup enables incremental processing and realistic benchmarking of heavy hitter detection, frequency estimation error, runtime, memory usage, and scalability. Both real and synthetic data distributions are used to assess algorithm robustness and performance under varying conditions.
+## What the project evaluates
 
-The project aims to provide a nuanced comparison, highlighting when each algorithmic family is preferable depending on operational constraints and distributed system requirements.
+The experiments focus on the main trade-offs for heavy-hitter detection:
+
+- Accuracy: precision, recall, and frequency-estimation error
+- Memory usage: how much state each summary needs
+- Throughput: rows processed per second
+- Scalability: behavior under increasing Spark partitioning
+- Distributed mergeability: whether summaries can be merged losslessly across partitions
+
+The workload uses a real Wikipedia pageview stream and synthetic Zipfian distributions to study robustness under different skew levels.
+
+## Repository layout
+
+- data/: raw or prepared input data
+- clean/: Parquet-formatted preprocessed pageview data
+- results/: benchmark outputs for the main baseline runs
+- results_same_memory/: equal-memory sweep outputs
+- results_same_threshold/: equal-threshold sweep outputs
+- results_skew/: skew-robustness outputs
+- results_distributed/: partitioning and mergeability outputs
+- scripts/: helper scripts for downloading data and generating plots
+- spark-heavy-hitters/: Scala/Spark implementation of the benchmark suite
+
+## Main implementation
+
+The Scala implementation lives under [spark-heavy-hitters](spark-heavy-hitters). The build is defined in [spark-heavy-hitters/build.sbt](spark-heavy-hitters/build.sbt) and uses Spark 3.5.5.
+
+Key components include:
+
+- [spark-heavy-hitters/src/main/scala/benchmarks](spark-heavy-hitters/src/main/scala/benchmarks): baseline benchmark runners
+- [spark-heavy-hitters/src/main/scala/benchmarks_same_memory](spark-heavy-hitters/src/main/scala/benchmarks_same_memory): equal-memory sweep benchmarks
+- [spark-heavy-hitters/src/main/scala/benchmarks_same_threshold](spark-heavy-hitters/src/main/scala/benchmarks_same_threshold): equal-threshold sweep benchmarks
+- [spark-heavy-hitters/src/main/scala/benchmarks_skew](spark-heavy-hitters/src/main/scala/benchmarks_skew): skew-robustness experiments
+- [spark-heavy-hitters/src/main/scala/benchmarks_distributed](spark-heavy-hitters/src/main/scala/benchmarks_distributed): partitioning and mergeability experiments
+- [spark-heavy-hitters/src/main/scala/ingestion](spark-heavy-hitters/src/main/scala/ingestion): data ingestion and synthetic stream generation
+
+## Running the benchmarks
+
+From the project root, build the Scala project:
+
+```bash
+cd spark-heavy-hitters
+sbt package
+```
+
+The repository includes several runnable benchmark entry points under the Scala source tree. Common workflows include:
+
+- Baseline heavy-hitter runs
+- Same-memory sweeps
+- Same-threshold sweeps
+- Skew-robustness runs
+- Distributed partitioning and mergeability runs
+
+The expected output artifacts are written into the corresponding results folders under the repository root.
+
+## Notes
+
+The benchmarks are designed to be reproducible and to compare algorithms under controlled memory budgets and partition settings. The main goal is not to declare a single winner, but to characterize when each algorithm family is preferable depending on memory, accuracy, throughput, and distributed-processing requirements.
