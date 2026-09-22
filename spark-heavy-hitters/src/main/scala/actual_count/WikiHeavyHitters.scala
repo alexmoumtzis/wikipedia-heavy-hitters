@@ -15,8 +15,8 @@ object WikiHeavyHitters {
       .master("local[*]")
       .getOrCreate()
 
-    val defaultInputPath = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
-    val defaultOutputPath = "file:///C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
+    val defaultInputPath = common.ProjectPaths.uri("clean/pageviews_parquet")
+    val defaultOutputPath = common.ProjectPaths.uri("results/exact_topk")
 
     // Optional args: input path, output path
     val inputPath = if (args.length > 0) args(0) else defaultInputPath

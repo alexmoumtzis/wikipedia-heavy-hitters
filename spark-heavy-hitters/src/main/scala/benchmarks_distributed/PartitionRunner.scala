@@ -27,7 +27,7 @@ object PartitionRunner {
 
   val defaultInputDir   = s"${SkewRunner.defaultCleanBaseDir}/pageviews_parquet"
   val defaultBaselineDir = s"${SkewRunner.defaultResultsBaseDir}/exact_topk"
-  val defaultOutputDir  = "C:/Users/alexm/wiki-heavy-hitters/results_distributed"
+  val defaultOutputDir  = common.ProjectPaths.path("results_distributed")
 
   /**
    * Operations a structure must expose to be benchmarked here. Captured by Spark

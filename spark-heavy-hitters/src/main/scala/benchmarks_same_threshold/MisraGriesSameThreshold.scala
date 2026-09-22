@@ -15,7 +15,7 @@ import scala.collection.JavaConverters._
 object MisraGriesSameThreshold {
 
   val AVG_BYTES_PER_ENTRY = 128L
-  val defaultThresholdOutputDir = "C:/Users/alexm/wiki-heavy-hitters/results_same_threshold"
+  val defaultThresholdOutputDir = common.ProjectPaths.path("results_same_threshold")
 
   def main(args: Array[String]): Unit = {
     val inputPath    = if (args.length > 0) args(0) else defaultInputPath

@@ -13,7 +13,7 @@ import org.apache.spark.sql.functions._
  */
 object ZipfGenerator {
 
-  val defaultOutputBaseDir = "C:/Users/alexm/wiki-heavy-hitters/clean"
+  val defaultOutputBaseDir = common.ProjectPaths.path("clean")
   val defaultExponents     = "0.6,0.8,1.0,1.2,1.5"
   val defaultV: Int        = 1000000
   val defaultN: Long       = 44367267L

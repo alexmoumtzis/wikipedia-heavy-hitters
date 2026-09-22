@@ -12,8 +12,8 @@ object WikimediaParser {
 
     import spark.implicits._
 
-    val inputPath = "C:/Users/alexm/wiki-heavy-hitters/data/*.bz2"
-    val outputPath = "C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
+    val inputPath = common.ProjectPaths.path("data/*.bz2")
+    val outputPath = common.ProjectPaths.path("clean/pageviews_parquet")
 
     val raw = spark.read.text(inputPath)
 

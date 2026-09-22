@@ -21,9 +21,9 @@ object SkewRunner {
   val DEFAULT_MEM_KB: Int       = 1024
   val DEFAULT_EXPONENTS: Seq[Double] = Seq(0.6, 0.8, 1.0, 1.2, 1.5)
 
-  val defaultCleanBaseDir   = "C:/Users/alexm/wiki-heavy-hitters/clean"
-  val defaultResultsBaseDir = "C:/Users/alexm/wiki-heavy-hitters/results"
-  val defaultOutputDir      = "C:/Users/alexm/wiki-heavy-hitters/results_skew"
+  val defaultCleanBaseDir   = common.ProjectPaths.path("clean")
+  val defaultResultsBaseDir = common.ProjectPaths.path("results")
+  val defaultOutputDir      = common.ProjectPaths.path("results_skew")
 
   /** A single dataset to benchmark: a synthetic Zipf variant or the real snapshot. */
   final case class SkewVariant(

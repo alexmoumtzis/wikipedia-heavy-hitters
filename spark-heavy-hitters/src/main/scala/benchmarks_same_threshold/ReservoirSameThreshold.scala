@@ -15,7 +15,7 @@ object ReservoirSameThreshold {
 
   val AVG_BYTES_PER_SLOT = 128L
   val DEFAULT_SEEDS: Seq[Long] = Seq(41L, 42L, 43L, 44L, 45L)
-  val defaultThresholdOutputDir = "C:/Users/alexm/wiki-heavy-hitters/results_same_threshold"
+  val defaultThresholdOutputDir = common.ProjectPaths.path("results_same_threshold")
 
   def main(args: Array[String]): Unit = {
     val inputPath    = if (args.length > 0) args(0) else defaultInputPath

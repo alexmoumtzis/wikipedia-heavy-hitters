@@ -48,9 +48,9 @@ object AmsHeavyHitters {
     // Per-record cost is O(s·t); with s=400, t=10 each insert does 4000 sketch
     // updates (vs 192 in the prior negative-result config).
     // -----------------------------------------------------------------------
-    val defaultInputPath    = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
-    val defaultOutputPath   = "file:///C:/Users/alexm/wiki-heavy-hitters/results/ams_topk"
-    val defaultBaselinePath = "C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
+    val defaultInputPath    = common.ProjectPaths.uri("clean/pageviews_parquet")
+    val defaultOutputPath   = common.ProjectPaths.uri("results/ams_topk")
+    val defaultBaselinePath = common.ProjectPaths.path("results/exact_topk")
 
     val inputPath      = if (args.length > 0) args(0) else defaultInputPath
     val outputPath     = if (args.length > 1) args(1) else defaultOutputPath
@@ -288,8 +288,8 @@ object AmsHeavyHitters {
       .csv(outputPath)
     println(s"\n[AMS] results written to $outputPath")
 
-    val benchmarkReportPath  = "c:/Users/alexm/wiki-heavy-hitters/results/ams_benchmark_report.txt"
-    val benchmarkMetricsPath = "c:/Users/alexm/wiki-heavy-hitters/results/ams_benchmark_metrics.csv"
+    val benchmarkReportPath  = common.ProjectPaths.path("results/ams_benchmark_report.txt")
+    val benchmarkMetricsPath = common.ProjectPaths.path("results/ams_benchmark_metrics.csv")
 
     val reportContent = f"""AMS Sketch (Median-of-Averages) Threshold Heavy Hitters Benchmark
 Generated: ${java.time.LocalDateTime.now()}

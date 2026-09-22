@@ -12,9 +12,9 @@ object SameMemoryRunner {
   val DEFAULT_MEMORY_TIERS_KB: Seq[Int] = Seq(128, 256, 512, 1024, 2048, 4096, 8192)
   val PHI: Double = 1e-4
 
-  val defaultInputPath    = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
-  val defaultBaselinePath = "C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
-  val defaultOutputDir    = "C:/Users/alexm/wiki-heavy-hitters/results_same_memory"
+  val defaultInputPath    = common.ProjectPaths.uri("clean/pageviews_parquet")
+  val defaultBaselinePath = common.ProjectPaths.path("results/exact_topk")
+  val defaultOutputDir    = common.ProjectPaths.path("results_same_memory")
 
   case class MetricsRow(
     algorithm:      String,

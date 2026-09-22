@@ -27,9 +27,9 @@ object ReservoirSamplingHeavyHitters {
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    val defaultInputPath    = "file:///C:/Users/alexm/wiki-heavy-hitters/clean/pageviews_parquet"
-    val defaultOutputPath   = "file:///C:/Users/alexm/wiki-heavy-hitters/results/reservoir_topk"
-    val defaultBaselinePath = "C:/Users/alexm/wiki-heavy-hitters/results/exact_topk"
+    val defaultInputPath    = common.ProjectPaths.uri("clean/pageviews_parquet")
+    val defaultOutputPath   = common.ProjectPaths.uri("results/reservoir_topk")
+    val defaultBaselinePath = common.ProjectPaths.path("results/exact_topk")
 
     val inputPath    = if (args.length > 0) args(0) else defaultInputPath
     val outputPath   = if (args.length > 1) args(1) else defaultOutputPath
@@ -218,8 +218,8 @@ object ReservoirSamplingHeavyHitters {
       .csv(outputPath)
     println(s"\n[RES] results written to $outputPath")
 
-    val benchmarkReportPath  = "c:/Users/alexm/wiki-heavy-hitters/results/reservoir_benchmark_report.txt"
-    val benchmarkMetricsPath = "c:/Users/alexm/wiki-heavy-hitters/results/reservoir_benchmark_metrics.csv"
+    val benchmarkReportPath  = common.ProjectPaths.path("results/reservoir_benchmark_report.txt")
+    val benchmarkMetricsPath = common.ProjectPaths.path("results/reservoir_benchmark_metrics.csv")
 
     val reportContent = f"""Reservoir Sampling Threshold Heavy Hitters Benchmark
 Generated: ${java.time.LocalDateTime.now()}

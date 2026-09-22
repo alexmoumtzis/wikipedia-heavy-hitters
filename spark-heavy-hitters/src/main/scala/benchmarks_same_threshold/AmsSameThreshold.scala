@@ -23,7 +23,7 @@ object AmsSameThreshold {
   val CMS_FRAC_FAST   = 0.40
   val CMS_DEPTH = 5
   val MAX_COPIES_PER_ROW_FAST_DEFAULT = Int.MaxValue
-  val defaultThresholdOutputDir = "C:/Users/alexm/wiki-heavy-hitters/results_same_threshold"
+  val defaultThresholdOutputDir = common.ProjectPaths.path("results_same_threshold")
 
   private final case class TierState(
     memKB: Int,
