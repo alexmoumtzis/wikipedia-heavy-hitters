@@ -37,5 +37,8 @@ object ProjectPaths {
 
   /** `file:///` URI for a repository-relative location (for Spark/Parquet I/O). */
   def uri(relative: String): String =
-    "file:///" + path(relative)
+    Paths.get(path(relative)).toUri.toString
+
+  def ensureDirectory(directory: String): Unit =
+    java.nio.file.Files.createDirectories(Paths.get(directory))
 }

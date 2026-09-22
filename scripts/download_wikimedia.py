@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 import time
 import urllib.request
@@ -5,15 +6,16 @@ from urllib.error import URLError, HTTPError
 
 URL = "https://dumps.wikimedia.org/other/pageview_complete/2025/2025-01/pageviews-20250129-automated.bz2"
 
-OUT_DIR = r"C:\wiki-heavy-hitters\data"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+OUT_DIR = Path(os.environ.get("WIKI_HH_DATA_DIR", REPO_ROOT / "data"))
 
 MAX_RETRIES = 5
 SLEEP_SECONDS = 10
 
-os.makedirs(OUT_DIR, exist_ok=True)
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 filename = URL.split("/")[-1]
-out_path = os.path.join(OUT_DIR, filename)
+out_path = OUT_DIR / filename
 
 
 def download():

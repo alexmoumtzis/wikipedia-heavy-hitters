@@ -72,6 +72,7 @@ object MisraGriesSameThreshold {
   }
 
   private def writeThresholdCsv(outputDir: String, algo: String, rows: Seq[MetricsRow]): Unit = {
+    common.ProjectPaths.ensureDirectory(outputDir)
     val path = Paths.get(outputDir, s"${algo.toLowerCase}_same_threshold.csv")
     val content = (CSV_HEADER +: rows.map(rowToCsv)).mkString("\n") + "\n"
     Files.write(path, content.getBytes(StandardCharsets.UTF_8))
