@@ -1,0 +1,2 @@
+algorithm,eps_sq,delta,phi,num_tables,table_size,max_memory_kb,rows,total_weight,runtime_s,throughput_rows_s,sketch_hh,true_hh,true_positives,false_positives,false_negatives,precision_pct,recall_pct,mean_freq_error,max_freq_error,mean_rel_error_pct,max_rel_error_pct
+FAST_AMS,1.6e-04,1.0e-03,1.0e-04,14,100000,10937.50,10897474,44367267,139.52,78109,158,158,155,3,3,98.1,98.1,14,44,0.14,0.69

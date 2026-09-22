@@ -1,0 +1,31 @@
+Concise Sampling Threshold Heavy Hitters Benchmark
+Generated: 2026-06-12T21:31:17.816930700
+
+Parameters
+  M (target sample)    : 100000
+  phi                  : 1.0e-04
+  final threshold T    : 512
+
+Memory (approx)
+  Summary size         : 5807.81 KB  (distinct sampled keys=45750)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 30.97 s
+  Throughput           : 351929 rows/s
+
+Heavy hitters
+  Concise threshold    : 4437
+  Exact threshold      : 4437
+  CONCISE HH count     : 192
+  True HH count        : 158
+  True positives       : 148
+  False positives      : 44
+  False negatives      : 10
+  Precision            : 77.1%
+  Recall               : 93.7%
+  Mean freq error      : 3040 views
+  Max  freq error      : 42255 views
+  Mean relative error  : 16.57%
+  Max  relative error  : 97.41%

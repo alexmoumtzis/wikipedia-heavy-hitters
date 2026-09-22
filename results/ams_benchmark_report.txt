@@ -1,0 +1,56 @@
+AMS Sketch (Median-of-Averages) Threshold Heavy Hitters Benchmark
+Generated: 2026-05-18T16:29:09.822297800
+
+NOTE — Feasibility regime for bucket-less AMS
+  Classical (bucket-less) AMS gives per-item frequency error
+      |f_hat(x) - f(x)|  <=  eps * ||f||_2     with prob >= 1 - delta
+  using s = 16/eps^2 averaging copies and t = 2 ln(1/delta) median rows.
+  On Wikimedia pageviews ||f||_2 ~ 5.5e6, so to resolve heavy hitters at
+  threshold phi*N we need eps * ||f||_2 << phi * N. With N ~ 4.4e7 the only
+  feasible regime within a few hours of runtime is phi >= 0.05 (top heavy
+  hitters only); smaller phi pushes s past 1e4 and s*t past 1e5 ops/record.
+
+  This run sits at the feasibility frontier and works:
+    phi=0.050, eps^2=0.040, delta=0.010  ->  s=400, t=10, 4000 sketches total.
+    Threshold = 2,218,364 views.  Precision = 100%, Recall = 100%
+    on the 2 true heavy hitters at this threshold.
+    Mean per-item error ~ 87k views (~1.5% of threshold), matching the
+    theoretical eps*||f||_2 / sqrt(s) ~ 1.1e6 bound after median-of-t boosting.
+
+  The cost is throughput: 599 rows/s vs ~196k rows/s for CMS and ~78k rows/s
+  for FastAMS/Count Sketch, because each insert performs s*t = 4000 sketch
+  updates. For finer-grained HH (phi=1e-4, threshold ~4.4k) bucket-less AMS
+  is infeasible; use the bucketed variant (Count Sketch / FastAMSSketch)
+  -- see fast_ams_benchmark_report.txt.
+
+Parameters
+  epsilon^2            : 4.0e-02
+  delta                : 1.0e-02
+  phi                  : 5.0e-02
+  rows (t)             : 10
+  copies per row (s)   : 400
+  total AMSSketches    : 4000
+
+Memory (approx)
+  Sketch state size    : 93.75 KB  (4000 sketches x ~24 bytes)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 18201.49 s
+  Throughput           : 599 rows/s
+
+Heavy hitters
+  Sketch threshold     : 2218364
+  Exact threshold      : 2218364
+  Sketch HH count      : 2
+  True   HH count      : 2
+  True positives       : 2
+  False positives      : 0
+  False negatives      : 0
+  Precision            : 100.0%
+  Recall               : 100.0%
+  Mean freq error      : 86960 views
+  Max  freq error      : 93847 views
+  Mean relative error  : 1.46%
+  Max  relative error  : 2.02%

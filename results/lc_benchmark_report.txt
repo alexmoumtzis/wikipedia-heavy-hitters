@@ -1,0 +1,31 @@
+Lossy Counting Summary Threshold Heavy Hitters Benchmark
+Generated: 2026-06-12T21:08:28.746668400
+
+Parameters
+  epsilon              : 1.0e-05
+  phi                  : 1.0e-04
+  bucket width (w)     : 100000
+
+Memory (approx)
+  Summary size         : 7584.59 KB  (58110 tracked entries at termination)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 33.20 s
+  Throughput           : 328208 rows/s
+
+Heavy hitters
+  LC report threshold  : 3994  ((phi - eps) * N)
+  Exact threshold      : 4437
+  LC   HH count        : 171
+  True HH count        : 158
+  True positives       : 155
+  False positives      : 16
+  False negatives      : 3
+  Precision            : 90.6%
+  Recall               : 98.1%
+  Mean freq error      : 0 views
+  Max  freq error      : 0 views
+  Mean relative error  : 0.00%
+  Max  relative error  : 0.00%

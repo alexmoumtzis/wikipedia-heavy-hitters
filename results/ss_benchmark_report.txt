@@ -1,0 +1,31 @@
+Space-Saving Summary Threshold Heavy Hitters Benchmark
+Generated: 2026-06-12T20:35:07.533576100
+
+Parameters
+  epsilon              : 1.0e-05
+  phi                  : 1.0e-04
+  m (counters)         : 100000
+
+Memory (approx)
+  Summary size         : 13888.12 KB  (100000 monitored items at termination)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 74.75 s
+  Throughput           : 145786 rows/s
+
+Heavy hitters
+  SS threshold         : 4437  (phi * N)
+  Exact threshold      : 4437
+  SS   HH count        : 161
+  True HH count        : 158
+  True positives       : 155
+  False positives      : 6
+  False negatives      : 3
+  Precision            : 96.3%
+  Recall               : 98.1%
+  Mean freq error      : 111 views
+  Max  freq error      : 216 views
+  Mean relative error  : 1.10%
+  Max  relative error  : 4.43%

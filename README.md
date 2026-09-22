@@ -41,12 +41,50 @@ Key components include:
 
 ## Running the benchmarks
 
-From the project root, build the Scala project:
+Prerequisites:
+
+- Java 11 or 17
+- sbt 1.10.10 or newer
+- Python 3 for downloading/preparing data and generating figures
+- Python packages `matplotlib` and `numpy` for `scripts/generate_plots.py`
+
+From a fresh clone, prepare the input data and build the Scala project:
 
 ```bash
+python scripts/download_wikimedia.py
 cd spark-heavy-hitters
+sbt "runMain WikimediaParser"
 sbt package
 ```
+
+The downloader stores the archive under `data/` relative to the repository.
+Set `WIKI_HH_DATA_DIR` to use a different data directory. The parser writes
+Parquet files under `clean/pageviews_parquet/`. Raw archives and generated
+Parquet files are intentionally excluded from Git because they are too large;
+the benchmark CSV outputs under `results/` are tracked and included in the
+repository for inspection and plotting. The generated exact baseline is the
+one exception: `results/exact_topk/` is too large for GitHub's file-size limit,
+so regenerate it with `actual_count.WikiHeavyHitters` before running
+benchmarks that compare against the exact baseline.
+
+The download script currently uses the Wikimedia pageview archive configured
+in `scripts/download_wikimedia.py`. If that archive is unavailable or you want
+to use a different snapshot, place compatible `.bz2` pageview files in `data/`
+or set `WIKI_HH_DATA_DIR` before running the script. Then run
+`WikimediaParser` to regenerate `clean/pageviews_parquet/`.
+
+For example, run the exact baseline and a Count-Min Sketch benchmark from
+`spark-heavy-hitters`:
+
+```bash
+sbt "runMain actual_count.WikiHeavyHitters"
+sbt "runMain benchmarks.CmsHeavyHitters"
+```
+
+All runners accept command-line path overrides where noted in their source;
+the defaults resolve relative to the repository. Set `WIKI_HH_HOME` or pass
+`-Dwiki.hh.home=<path>` when the repository root cannot be inferred from the
+current working directory.
 
 The repository includes several runnable benchmark entry points under the Scala source tree. Common workflows include:
 

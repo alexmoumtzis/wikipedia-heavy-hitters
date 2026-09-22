@@ -1,0 +1,32 @@
+Misra-Gries Summary Threshold Heavy Hitters Benchmark
+Generated: 2026-06-12T18:50:27.309833500
+
+Parameters
+  epsilon              : 1.0e-05
+  phi                  : 1.0e-04
+  k                    : 100000
+  capacity (k-1)       : 99999
+
+Memory (approx)
+  Summary size         : 8634.07 KB  (73743 monitored items at termination)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 40.72 s
+  Throughput           : 267600 rows/s
+
+Heavy hitters
+  MG report threshold  : 3994  ((phi - eps) * N)
+  Exact threshold      : 4437
+  MG   HH count        : 167
+  True HH count        : 158
+  True positives       : 155
+  False positives      : 12
+  False negatives      : 3
+  Precision            : 92.8%
+  Recall               : 98.1%
+  Mean freq error      : 106 views
+  Max  freq error      : 217 views
+  Mean relative error  : 1.11%
+  Max  relative error  : 3.73%

@@ -1,0 +1,3 @@
+algorithm,eps_sq,delta,phi,rows,copies_per_row,memory_kb,rows_seen,total_weight,runtime_s,throughput_rows_s,sketch_hh,true_hh,true_positives,false_positives,false_negatives,precision_pct,recall_pct,mean_freq_error,max_freq_error,mean_rel_error_pct,max_rel_error_pct
+AMS,5.0e-01,5.0e-02,1.0e-04,6,32,4.50,10897474,44367267,841.09,12956,4638087,158,90,4637997,68,0.0,57.0,981700,2962786,9814.80,41298.20
+AMS,4.0e-02,1.0e-02,5.0e-02,10,400,93.75,10897474,44367267,18201.49,599,2,2,2,0,0,100.0,100.0,86960,93847,1.46,2.02

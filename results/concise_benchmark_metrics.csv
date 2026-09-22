@@ -1,0 +1,2 @@
+algorithm,target_sample,phi,threshold_t,memory_kb,rows,total_weight,runtime_s,throughput_rows_s,concise_hh,true_hh,true_positives,false_positives,false_negatives,precision_pct,recall_pct,mean_freq_error,max_freq_error,mean_rel_error_pct,max_rel_error_pct
+CONCISE,100000,1.0e-04,512,5807.81,10897474,44367267,30.97,351929,192,158,148,44,10,77.1,93.7,3040,42255,16.57,97.41

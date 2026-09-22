@@ -1,0 +1,2 @@
+algorithm,epsilon,phi,k,capacity,memory_kb,rows,total_weight,runtime_s,throughput_rows_s,mg_hh,true_hh,true_positives,false_positives,false_negatives,precision_pct,recall_pct,mean_freq_error,max_freq_error,mean_rel_error_pct,max_rel_error_pct
+MG,1.0e-05,1.0e-04,100000,99999,8634.07,10897474,44367267,40.72,267600,167,158,155,12,3,92.8,98.1,106,217,1.11,3.73

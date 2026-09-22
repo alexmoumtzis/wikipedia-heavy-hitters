@@ -1,0 +1,33 @@
+Fast AMS / Count Sketch Threshold Heavy Hitters Benchmark
+Generated: 2026-05-18T01:39:41.916473300
+
+Parameters
+  epsilon^2            : 1.6e-04
+  delta                : 1.0e-03
+  phi                  : 1.0e-04
+  numTables (t)        : 14
+  tableSize (b)        : 100000
+
+Memory (worst case, fully populated)
+  Sketch upper bound   : 10937.50 KB  (1400000 counters x 8 bytes)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 139.52 s
+  Throughput           : 78109 rows/s
+
+Heavy hitters
+  Sketch threshold     : 4437
+  Exact threshold      : 4437
+  Sketch HH count      : 158
+  True   HH count      : 158
+  True positives       : 155
+  False positives      : 3
+  False negatives      : 3
+  Precision            : 98.1%
+  Recall               : 98.1%
+  Mean freq error      : 14 views
+  Max  freq error      : 44 views
+  Mean relative error  : 0.14%
+  Max  relative error  : 0.69%

@@ -1,0 +1,33 @@
+Count-Min Sketch Threshold Heavy Hitters Benchmark
+Generated: 2026-05-16T16:36:49.374820300
+
+Parameters
+  epsilon              : 1.0e-06
+  delta                : 1.0e-03
+  phi                  : 1.0e-04
+  width (w)            : 2718282
+  depth (d)            : 7
+
+Memory
+  CMS table size       : 148656.05 KB  (19027974 counters x 8 bytes)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 55.56 s
+  Throughput           : 196132 rows/s
+
+Heavy hitters
+  CMS threshold        : 4437
+  Exact threshold      : 4437
+  CMS  HH count        : 158
+  True HH count        : 158
+  True positives       : 155
+  False positives      : 3
+  False negatives      : 3
+  Precision            : 98.1%
+  Recall               : 98.1%
+  Mean freq error      : 2 views
+  Max  freq error      : 6 views
+  Mean relative error  : 0.02%
+  Max  relative error  : 0.08%

@@ -1,0 +1,2 @@
+algorithm,epsilon,phi,bucket_width,memory_kb,rows,total_weight,runtime_s,throughput_rows_s,lc_hh,true_hh,true_positives,false_positives,false_negatives,precision_pct,recall_pct,mean_freq_error,max_freq_error,mean_rel_error_pct,max_rel_error_pct
+LC,1.0e-05,1.0e-04,100000,7584.59,10897474,44367267,33.20,328208,171,158,155,16,3,90.6,98.1,0,0,0.00,0.00

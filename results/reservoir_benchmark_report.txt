@@ -1,0 +1,30 @@
+Reservoir Sampling Threshold Heavy Hitters Benchmark
+Generated: 2026-06-12T21:27:45.299740400
+
+Parameters
+  M (sample size)      : 100000
+  phi                  : 1.0e-04
+
+Memory (approx)
+  Summary size         : 7439.67 KB  (distinct sampled keys=52521)
+
+Runtime & Throughput
+  Total stream rows    : 10897474
+  Total weighted N     : 44367267
+  Wall-clock time      : 24.65 s
+  Throughput           : 442106 rows/s
+
+Heavy hitters
+  Reservoir threshold  : 4437
+  Exact threshold      : 4437
+  RES  HH count        : 188
+  True HH count        : 158
+  True positives       : 142
+  False positives      : 46
+  False negatives      : 16
+  Precision            : 75.5%
+  Recall               : 89.9%
+  Mean freq error      : 2484 views
+  Max  freq error      : 51995 views
+  Mean relative error  : 13.24%
+  Max  relative error  : 61.90%
